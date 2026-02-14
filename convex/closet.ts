@@ -29,8 +29,12 @@ export const addClosetItem = mutation({
     type: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const { userId, imageUrl, label, type } = args;
     return await ctx.db.insert("closetItems", {
-      ...args,
+      userId,
+      imageUrl,
+      label,
+      type,
       createdAt: Date.now(),
     });
   },

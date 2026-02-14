@@ -29,7 +29,7 @@ const WOMEN_DEMO_ITEMS = [
 
 export default function Dashboard() {
   const userId = "demo";
-  const profilePhotoUrl = useQuery(api.profile.getProfilePhoto, { userId });
+  const profilePhotoUrlData = useQuery(api.profile.getProfilePhoto, { userId });
   const upsertProfile = useMutation(api.profile.upsertProfilePhoto);
   const getProfileUploadUrl = useMutation(api.profile.getUploadUrl);
   const generateOutfits = useAction(api.outfits.generateTop3OutfitsWithTryOn);
@@ -98,6 +98,7 @@ export default function Dashboard() {
       console.error("Profile upload error:", err);
     } finally {
       setIsSavingProfile(false);
+      if (profileInputRef.current) profileInputRef.current.value = "";
     }
   };
 
@@ -119,7 +120,7 @@ export default function Dashboard() {
 
   const loadDemo = async () => {
     for (const item of WOMEN_DEMO_ITEMS) {
-      await addItem({ userId, ...item, createdAt: Date.now() });
+      await addItem({ userId, ...item });
     }
   };
 
@@ -146,7 +147,7 @@ export default function Dashboard() {
     if (!uploadedStorageId) return;
     setIsSubmitting(true);
     try {
-      await addItem({ userId, imageUrl: uploadedStorageId, label, type, createdAt: Date.now() });
+      await addItem({ userId, imageUrl: uploadedStorageId, label, type });
       setLabel("");
       setUploadedStorageId(null);
       setView("default");
@@ -179,8 +180,8 @@ export default function Dashboard() {
         {/* Profile Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2 flex flex-col md:flex-row gap-6 items-center">
           <div className="w-24 h-24 rounded-full bg-pink-100 border-2 border-pink-200 overflow-hidden flex-shrink-0 relative group cursor-pointer" onClick={() => profileInputRef.current?.click()}>
-            {profilePhotoUrl ? (
-              <img src={profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+            {profilePhotoUrlData ? (
+              <img src={profilePhotoUrlData} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <UserCircle className="w-full h-full text-pink-300" />
             )}
@@ -191,7 +192,7 @@ export default function Dashboard() {
           </div>
           <div className="flex-1 space-y-2">
             <h2 className="text-lg font-bold text-pink-900">Your Style Profile</h2>
-            <p className="text-sm text-pink-600">Upload a full-body photo from your device to enable AI Try-On.</p>
+            <p className="text-sm text-pink-600">Click the circle to upload your full-body photo for AI Try-On.</p>
             {isSavingProfile && <div className="flex items-center gap-2 text-xs text-pink-500 font-bold animate-pulse"><Loader2 className="w-3 h-3 animate-spin" /> Uploading profile...</div>}
           </div>
         </div>
