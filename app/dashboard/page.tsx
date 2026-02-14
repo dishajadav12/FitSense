@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useSearchParams } from "next/navigation";
-import { Plus, Sparkles, ShoppingBag, Loader2, Cloud, Wind, Thermometer, Zap, History, UserCircle, Save, Image as ImageIcon, Upload } from "lucide-react";
+import { Plus, Sparkles, ShoppingBag, Loader2, Cloud, Image as ImageIcon, Upload } from "lucide-react";
 
 const OCCASIONS = ["Work", "Date", "Casual", "Party"];
 const CLOSET_TYPES = ["top", "bottom", "dress", "shoes", "outerwear"];
@@ -29,11 +29,7 @@ const WOMEN_DEMO_ITEMS = [
 
 export default function Dashboard() {
   const userId = "demo";
-  const profilePhotoUrlData = useQuery(api.profile.getProfilePhoto, { userId });
-  const upsertProfile = useMutation(api.profile.upsertProfilePhoto);
-  const getProfileUploadUrl = useMutation(api.profile.getUploadUrl);
   const generateOutfits = useAction(api.outfits.generateTop3OutfitsWithTryOn);
-  const history = useQuery(api.outfits.listHistory, { userId });
   const items = useQuery(api.closet.listClosetItems, { userId });
   const addItem = useMutation(api.closet.addClosetItem);
   const getClosetUploadUrl = useMutation(api.closet.generateUploadUrl);
@@ -49,8 +45,6 @@ export default function Dashboard() {
   
   const [results, setResults] = useState<any[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
   // Closet Add State
   const [label, setLabel] = useState("");
   const [type, setType] = useState("top");
@@ -58,7 +52,6 @@ export default function Dashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedStorageId, setUploadedStorageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const profileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchWeather = async () => {
     setIsWeatherLoading(true);
@@ -76,31 +69,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchWeather();
   }, []);
-
-  const handleProfileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsSavingProfile(true);
-    try {
-      const postUrl = await getProfileUploadUrl();
-      const result = await fetch(postUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      if (!result.ok) throw new Error("Upload failed");
-
-      const { storageId } = await result.json();
-      await upsertProfile({ userId, photoUrl: storageId });
-    } catch (err) {
-      console.error("Profile upload error:", err);
-    } finally {
-      setIsSavingProfile(false);
-      if (profileInputRef.current) profileInputRef.current.value = "";
-    }
-  };
 
   const handleRecommend = async () => {
     setIsGenerating(true);
@@ -177,26 +145,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Profile Card */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2 flex flex-col md:flex-row gap-6 items-center">
-          <div className="w-24 h-24 rounded-full bg-pink-100 border-2 border-pink-200 overflow-hidden flex-shrink-0 relative group cursor-pointer" onClick={() => profileInputRef.current?.click()}>
-            {profilePhotoUrlData ? (
-              <img src={profilePhotoUrlData} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              <UserCircle className="w-full h-full text-pink-300" />
-            )}
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Upload className="text-white w-6 h-6" />
-            </div>
-            <input type="file" ref={profileInputRef} className="hidden" accept="image/*" onChange={handleProfileUpload} />
-          </div>
-          <div className="flex-1 space-y-2">
-            <h2 className="text-lg font-bold text-pink-900">Your Style Profile</h2>
-            <p className="text-sm text-pink-600">Click the circle to upload your full-body photo for AI Try-On.</p>
-            {isSavingProfile && <div className="flex items-center gap-2 text-xs text-pink-500 font-bold animate-pulse"><Loader2 className="w-3 h-3 animate-spin" /> Uploading profile...</div>}
-          </div>
-        </div>
-
         {view === "add" ? (
           <div className="max-w-md mx-auto">
             <div className="bg-white p-8 rounded-2xl shadow-sm border-pink-100 border-2 space-y-6">
@@ -250,19 +198,6 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {history && history.length > 0 && (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
-                  <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2"><History className="w-5 h-5" /> History</h2>
-                  <div className="space-y-4">
-                    {history.map(h => (
-                      <div key={h._id} className="p-3 bg-pink-50/30 rounded-xl text-xs">
-                        <p className="font-bold text-pink-900">{h.results?.[0]?.outfitText || "Past Look"}</p>
-                        <p className="text-pink-600 mt-1 italic">{h.occasion} • {h.weatherSummary}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="lg:col-span-2 space-y-8">
@@ -301,7 +236,7 @@ export default function Dashboard() {
                   {items?.map(item => (
                     <div key={item._id} className="bg-white rounded-xl shadow-sm border border-pink-50 overflow-hidden">
                       <div className="aspect-[3/4] relative bg-pink-50">
-                        <img src={item.imageUrl} alt={item.label} className="w-full h-full object-cover" />
+                        <img src={item.imageUrl} alt={item.label || ""} className="w-full h-full object-cover" />
                       </div>
                       <div className="p-2 bg-white">
                         <p className="font-bold text-pink-900 text-[10px] truncate">{item.label}</p>

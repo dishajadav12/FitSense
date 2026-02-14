@@ -11,7 +11,8 @@ export default defineSchema({
   }).index("by_userId", ["userId"]),
   userProfiles: defineTable({
     userId: v.string(),
-    photoUrl: v.string(),
+    name: v.optional(v.string()),
+    photoUrl: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
   outfitHistory: defineTable({
@@ -20,15 +21,13 @@ export default defineSchema({
     mood: v.number(),
     bodyState: v.string(),
     weatherSummary: v.string(),
-    // Keep old fields as optional to support legacy data during transition
     outfitText: v.optional(v.string()),
     reason: v.optional(v.string()),
     itemIds: v.optional(v.array(v.string())),
-    // New structured results
     results: v.optional(v.array(v.object({
       outfitText: v.string(),
       reason: v.string(),
-      tryOnImageBase64: v.optional(v.any()), // Changed to any to be safer with nulls/undefined
+      tryOnImageBase64: v.optional(v.any()),
     }))),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
