@@ -1,18 +1,28 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const get = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("closet").collect();
+export const listClosetItems = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("closetItems")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .collect();
   },
 });
 
-export const add = mutation({
-  args: { imageUrl: v.string(), type: v.string(), tags: v.array(v.string()) },
+export const addClosetItem = mutation({
+  args: {
+    userId: v.string(),
+    imageUrl: v.string(),
+    label: v.optional(v.string()),
+    type: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    // In a real app, use ctx.auth.getUserIdentity()
-    const userId = "placeholder_user"; 
-    await ctx.db.insert("closet", { userId, ...args });
+    return await ctx.db.insert("closetItems", {
+      ...args,
+      createdAt: Date.now(),
+    });
   },
 });

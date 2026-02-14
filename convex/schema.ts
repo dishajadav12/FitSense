@@ -2,17 +2,19 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  closet: defineTable({
+  closetItems: defineTable({
     userId: v.string(),
     imageUrl: v.string(),
-    type: v.string(), // "top", "bottom", "shoes", etc.
-    tags: v.array(v.string()),
-  }),
+    label: v.optional(v.string()),
+    type: v.optional(v.string()), // "top", "bottom", "dress", "shoes", "outerwear"
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
+  // Keeping these for later steps as defined previously
   outfits: defineTable({
     userId: v.string(),
-    topId: v.id("closet"),
-    bottomId: v.id("closet"),
-    shoesId: v.id("closet"),
+    topId: v.id("closetItems"),
+    bottomId: v.id("closetItems"),
+    shoesId: v.id("closetItems"),
     dateWorn: v.optional(v.string()),
   }),
 });
