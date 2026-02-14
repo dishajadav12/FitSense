@@ -1,0 +1,110 @@
+We have fitsense (Next.js App Router + Tailwind + Convex). Closet upload/list works. Context + weather summary works.
+
+Now implement Step 4 ONLY: AI outfit recommendation using MiniMax via a Convex action.
+
+Rules
+
+Do NOT add auth (keep userId = "demo").
+
+Do NOT build vision tagging.
+
+Keep output structured and demo-friendly.
+
+AI request must run server-side (Convex action), not directly from the browser.
+
+1) Convex schema update
+
+Update /convex/schema.ts to add a table outfitHistory with:
+
+userId (string)
+
+occasion (string)
+
+mood (number) // 0-100
+
+bodyState (string) // "normal" | "bloated"
+
+weatherSummary (string) // e.g. "Next 24h: 55°F avg, rainy"
+
+outfitText (string) // human-readable outfit suggestion
+
+reason (string) // 1 sentence explanation
+
+createdAt (number)
+
+2) Convex action: generate outfit
+
+In /convex/outfits.ts, create an action called generateOutfit that:
+
+Inputs:
+
+userId (string)
+
+occasion (string)
+
+mood (number)
+
+bodyState (string)
+
+weatherSummary (string)
+
+Reads closet items for that user from Convex (closetItems table).
+
+Calls MiniMax OpenAI-compatible endpoint:
+
+Base URL: https://api.minimaxi.com/v1
+
+Endpoint: /chat/completions
+
+Auth header: Authorization: Bearer ${process.env.MINIMAX_API_KEY}
+
+Use model: "MiniMax-M2" (or "MiniMax-M2.1" if needed)
+
+Prompt the model to output STRICT JSON like:
+
+{ "outfitText": "...", "reason": "..." }
+
+
+Parse JSON safely (handle if model returns extra text; extract JSON).
+
+Save to outfitHistory.
+
+Return { outfitText, reason }.
+
+Add robust error handling: if the MiniMax call fails, return a fallback outfit suggestion and reason.
+
+3) Frontend: wire it on /app/dashboard/page.tsx
+
+Add a button: “Recommend Outfit”
+
+On click:
+
+Call Convex action generateOutfit with:
+
+userId="demo"
+
+current context inputs
+
+current weather summary string
+
+Display output in the “Outfit Result” section:
+
+OutfitText in a big card
+
+Reason as smaller text below
+Add a “Regenerate” button that calls it again.
+
+4) Optional: show history list (only if quick)
+
+Below results, show last 5 entries from outfitHistory (create a query for it).
+
+Deliverable
+
+Click “Recommend Outfit” → get outfit + 1-line reason
+
+Works reliably (fallback if API fails)
+
+Saved to history (even if you don’t render it)
+Stop after Step 4 is complete.
+
+NOTE: Use .env.local / Replit secrets for MINIMAX_API_KEY. Do NOT expose key in client code.

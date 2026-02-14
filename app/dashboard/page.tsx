@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useSearchParams } from "next/navigation";
-import { Upload, Plus, Sparkles, ShoppingBag, Loader2, Cloud, Wind, Thermometer, Zap, ChevronLeft } from "lucide-react";
+import { Upload, Plus, Sparkles, ShoppingBag, Loader2, Cloud, Wind, Thermometer, Zap, History } from "lucide-react";
 
 const CLOSET_TYPES = ["top", "bottom", "dress", "shoes", "outerwear"];
 const OCCASIONS = ["Work", "Date", "Casual", "Party"];
@@ -36,8 +36,10 @@ export default function Dashboard() {
   const searchParams = useSearchParams();
   const userId = "demo";
   const items = useQuery(api.closet.listClosetItems, { userId });
+  const history = useQuery(api.outfits.listHistory, { userId });
   const addItem = useMutation(api.closet.addClosetItem);
   const generateUploadUrl = useMutation(api.closet.generateUploadUrl);
+  const generateOutfit = useAction(api.outfits.generateOutfit);
 
   // View state
   const [view, setView] = useState<"default" | "add">(
@@ -61,6 +63,10 @@ export default function Dashboard() {
   const [weather, setWeather] = useState<{ temp: number; condition: string } | null>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
 
+  // AI Recommendation State
+  const [recommendation, setRecommendation] = useState<{ outfitText: string, reason: string } | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const fetchWeather = async () => {
     setIsWeatherLoading(true);
     try {
@@ -77,6 +83,24 @@ export default function Dashboard() {
   useEffect(() => {
     fetchWeather();
   }, []);
+
+  const handleRecommend = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await generateOutfit({
+        userId,
+        occasion,
+        mood,
+        bodyState: isBloated ? "bloated" : "normal",
+        weatherSummary: weather ? `${weather.temp}°F, ${weather.condition}` : "Unknown weather",
+      });
+      setRecommendation(result);
+    } catch (err) {
+      console.error("Failed to generate outfit:", err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,7 +145,7 @@ export default function Dashboard() {
       setType("top");
       setUploadedStorageId(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      setView("default"); // Back to closet view after adding
+      setView("default"); 
     } catch (err) {
       console.error("Add item error:", err);
       setUploadError("Failed to add piece. Please try again.");
@@ -163,6 +187,7 @@ export default function Dashboard() {
 
         {view === "add" ? (
           <div className="max-w-md mx-auto">
+            {/* Add Piece Form UI (Unchanged) */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border-pink-100 border-2">
               <h2 className="text-2xl font-bold mb-6 text-pink-800 flex items-center gap-2">
                 <Plus className="w-6 h-6" /> Add New Piece
@@ -236,8 +261,8 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column: Context */}
             <div className="lg:col-span-1 space-y-8">
+              {/* Context Section */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
                 <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
                   <Cloud className="w-5 h-5" /> Today's Context
@@ -276,17 +301,22 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-pink-50/50 rounded-xl border border-pink-100">
-                    <div className="flex items-center gap-2">
-                      <Zap className={`w-4 h-4 ${isBloated ? 'text-pink-500' : 'text-gray-400'}`} />
-                      <span className="text-sm font-medium text-pink-700">Body State</span>
+                  <div>
+                    <label className="block text-sm font-medium text-pink-700 mb-1">Body State</label>
+                    <div className="flex p-1 bg-pink-50 rounded-xl border border-pink-100">
+                      <button
+                        onClick={() => setIsBloated(false)}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!isBloated ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-400 hover:text-pink-400'}`}
+                      >
+                        Normal
+                      </button>
+                      <button
+                        onClick={() => setIsBloated(true)}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${isBloated ? 'bg-pink-600 text-white shadow-sm shadow-pink-200' : 'text-gray-400 hover:text-pink-400'}`}
+                      >
+                        Bloated
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setIsBloated(!isBloated)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${isBloated ? 'bg-pink-500 text-white shadow-sm shadow-pink-200' : 'bg-white text-gray-400 border border-gray-200'}`}
-                    >
-                      {isBloated ? 'Bloated' : 'Normal'}
-                    </button>
                   </div>
 
                   <div className="pt-2 border-t border-pink-50">
@@ -320,21 +350,77 @@ export default function Dashboard() {
                     )}
                   </div>
                 </div>
+
+                <button
+                  onClick={handleRecommend}
+                  disabled={isGenerating || !items}
+                  className="w-full mt-6 py-4 bg-pink-600 hover:bg-pink-700 disabled:bg-pink-300 text-white rounded-2xl font-bold shadow-lg shadow-pink-100 transition-all transform active:scale-95 flex justify-center items-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Designing Look...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      Recommend Outfit
+                    </>
+                  )}
+                </button>
               </div>
+
+              {/* Outfit History */}
+              {history && history.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
+                  <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
+                    <History className="w-5 h-5" /> Recent Looks
+                  </h2>
+                  <div className="space-y-4">
+                    {history.map((h) => (
+                      <div key={h._id} className="p-3 bg-pink-50/30 rounded-xl border border-pink-50 text-xs">
+                        <p className="font-bold text-pink-900">{h.outfitText}</p>
+                        <p className="text-pink-600 mt-1 italic">{h.occasion} • {h.weatherSummary}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Right Column: Closet Grid & Outfit Result Placeholder */}
+            {/* Right Column: Result & Closet */}
             <div className="lg:col-span-2 space-y-8">
+              {/* Outfit Result */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
                 <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
                   <Sparkles className="w-5 h-5" /> AI Outfit Suggestion
                 </h2>
-                <div className="h-48 bg-pink-50/30 rounded-2xl border-2 border-dashed border-pink-100 flex flex-col items-center justify-center text-pink-300 p-8 text-center">
-                  <p className="font-medium italic mb-2">"Based on your {occasion.toLowerCase()} occasion and {weather?.condition.toLowerCase() || 'cloudy'} weather..."</p>
-                  <p className="text-xs opacity-60">Recommendation logic coming in the next step!</p>
-                </div>
+                {recommendation ? (
+                  <div className="space-y-4">
+                    <div className="bg-pink-600 p-8 rounded-2xl text-white shadow-md">
+                      <p className="text-2xl font-bold leading-relaxed">{recommendation.outfitText}</p>
+                    </div>
+                    <div className="p-4 bg-pink-50 rounded-xl border border-pink-100">
+                      <p className="text-sm font-medium text-pink-800 italic">Style Reason: {recommendation.reason}</p>
+                    </div>
+                    <button
+                      onClick={handleRecommend}
+                      disabled={isGenerating}
+                      className="flex items-center gap-2 text-pink-600 font-bold hover:text-pink-700 transition-colors"
+                    >
+                      <Loader2 className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                      Regenerate Look
+                    </button>
+                  </div>
+                ) : (
+                  <div className="h-48 bg-pink-50/30 rounded-2xl border-2 border-dashed border-pink-100 flex flex-col items-center justify-center text-pink-300 p-8 text-center">
+                    <p className="font-medium italic mb-2">"Based on your {occasion.toLowerCase()} occasion and {weather?.condition.toLowerCase() || 'cloudy'} weather..."</p>
+                    <p className="text-xs opacity-60">Click Recommend Outfit to get your AI styling!</p>
+                  </div>
+                )}
               </div>
 
+              {/* Closet Grid (Unchanged) */}
               <div>
                 <h2 className="text-xl font-semibold mb-4 text-pink-900">Your Boutique</h2>
                 {!items ? (

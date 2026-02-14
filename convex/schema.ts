@@ -9,7 +9,6 @@ export default defineSchema({
     type: v.optional(v.string()), // "top", "bottom", "dress", "shoes", "outerwear"
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
-  // Keeping these for later steps as defined previously
   outfits: defineTable({
     userId: v.string(),
     topId: v.id("closetItems"),
@@ -17,4 +16,14 @@ export default defineSchema({
     shoesId: v.id("closetItems"),
     dateWorn: v.optional(v.string()),
   }),
+  outfitHistory: defineTable({
+    userId: v.string(),
+    occasion: v.string(),
+    mood: v.number(),
+    bodyState: v.string(),
+    weatherSummary: v.string(),
+    outfitText: v.string(),
+    reason: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });
