@@ -13,7 +13,7 @@ export const listClosetItems = query({
     return Promise.all(
       items.map(async (item) => ({
         ...item,
-        imageUrl: (item.imageUrl.startsWith("https://") || item.imageUrl.startsWith("http://"))
+        imageUrl: (item.imageUrl.startsWith("https://") || item.imageUrl.startsWith("http://") || item.imageUrl.startsWith("/"))
           ? item.imageUrl
           : await ctx.storage.getUrl(item.imageUrl as any),
       }))
