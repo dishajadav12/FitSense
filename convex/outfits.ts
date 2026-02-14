@@ -47,9 +47,11 @@ export const generateTop3OutfitsWithTryOn = action({
     const closetItems = await ctx.runQuery(api.closet.listClosetItems, {
       userId: args.userId,
     });
-    const profilePhotoUrl = await ctx.runQuery(api.profile.getProfilePhoto, {
+    const profilePhotoUrlData = await ctx.runQuery(api.profile.getProfilePhoto, {
       userId: args.userId,
     });
+    // Ensure we have a string URL if it's not null
+    const profilePhotoUrl = profilePhotoUrlData;
 
     const itemsSummary = closetItems
       .map((item: any) => `${item.type}: ${item.label || "unlabeled"}`)

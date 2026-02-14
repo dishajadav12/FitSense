@@ -31,7 +31,15 @@ export const getProfilePhoto = query({
       .query("userProfiles")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
-    return profile?.photoUrl || null;
+    
+    if (!profile) return null;
+
+    // If it's a storage ID, get the URL
+    if (!profile.photoUrl.startsWith("http")) {
+      return await ctx.storage.getUrl(profile.photoUrl as any);
+    }
+
+    return profile.photoUrl;
   },
 });
 
