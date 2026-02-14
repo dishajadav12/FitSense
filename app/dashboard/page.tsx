@@ -39,8 +39,6 @@ export default function Dashboard() {
   const [label, setLabel] = useState("");
   const [type, setType] = useState("top");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadMode, setUploadMode] = useState<"url" | "upload">("upload");
-  const [imageUrl, setImageUrl] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,40 +48,28 @@ export default function Dashboard() {
     
     setIsSubmitting(true);
     try {
-      let finalImageUrl = imageUrl;
-
-      if (uploadMode === "upload") {
-        const file = fileInputRef.current?.files?.[0];
-        if (!file) {
-          setUploadError("Please select a file first");
-          setIsSubmitting(false);
-          return;
-        }
-
-        const postUrl = await generateUploadUrl();
-        const result = await fetch(postUrl, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-
-        if (!result.ok) {
-          throw new Error("Upload failed");
-        }
-
-        const { storageId } = await result.json();
-        finalImageUrl = storageId;
-      }
-
-      if (!finalImageUrl) {
-        setUploadError("Image source is required");
+      const file = fileInputRef.current?.files?.[0];
+      if (!file) {
+        setUploadError("Please select a file first");
         setIsSubmitting(false);
         return;
       }
 
-      await addItem({ userId, imageUrl: finalImageUrl, label, type });
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!result.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const { storageId } = await result.json();
       
-      setImageUrl("");
+      await addItem({ userId, imageUrl: storageId, label, type });
+      
       setLabel("");
       setType("top");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -125,72 +111,38 @@ export default function Dashboard() {
                 <Plus className="w-5 h-5" /> Add New Piece
               </h2>
               
-              <div className="flex gap-2 mb-6 p-1 bg-pink-50 rounded-lg">
-                <button 
-                  type="button"
-                  onClick={() => { setUploadMode("upload"); setUploadError(null); }}
-                  className={`flex-1 py-1.5 text-sm rounded-md transition-all ${uploadMode === "upload" ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-pink-400"}`}
-                >
-                  Upload Image
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => { setUploadMode("url"); setUploadError(null); }}
-                  className={`flex-1 py-1.5 text-sm rounded-md transition-all ${uploadMode === "url" ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-pink-400"}`}
-                >
-                  Image URL
-                </button>
-              </div>
-
               <form onSubmit={handleAdd} className="space-y-4">
-                {uploadMode === "upload" ? (
-                  <div>
-                    <label className="block text-sm font-medium text-pink-700 mb-1">
-                      Choose Photo
-                    </label>
-                    <div 
-                      onClick={() => !isSubmitting && fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors bg-pink-50/50 relative ${uploadError ? 'border-red-300 bg-red-50' : 'border-pink-200 hover:border-pink-400'} ${isSubmitting ? 'cursor-not-allowed opacity-70' : ''}`}
-                    >
-                      {isSubmitting ? (
-                        <div className="flex flex-col items-center">
-                          <Loader2 className="w-8 h-8 text-pink-500 animate-spin mb-2" />
-                          <p className="text-xs text-pink-600 font-medium">Uploading piece...</p>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className={`w-8 h-8 mx-auto mb-2 ${uploadError ? 'text-red-400' : 'text-pink-400'}`} />
-                          <p className={`text-xs font-medium ${uploadError ? 'text-red-600' : 'text-pink-600'}`}>
-                            {fileInputRef.current?.files?.[0]?.name || "Click to upload image"}
-                          </p>
-                        </>
-                      )}
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        accept="image/*"
-                        onChange={() => setUploadError(null)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-pink-700 mb-1">
-                      Image URL *
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="https://..."
+                <div>
+                  <label className="block text-sm font-medium text-pink-700 mb-1">
+                    Choose Photo
+                  </label>
+                  <div 
+                    onClick={() => !isSubmitting && fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors bg-pink-50/50 relative ${uploadError ? 'border-red-300 bg-red-50' : 'border-pink-200 hover:border-pink-400'} ${isSubmitting ? 'cursor-not-allowed opacity-70' : ''}`}
+                  >
+                    {isSubmitting ? (
+                      <div className="flex flex-col items-center">
+                        <Loader2 className="w-8 h-8 text-pink-500 animate-spin mb-2" />
+                        <p className="text-xs text-pink-600 font-medium">Uploading piece...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className={`w-8 h-8 mx-auto mb-2 ${uploadError ? 'text-red-400' : 'text-pink-400'}`} />
+                        <p className={`text-xs font-medium ${uploadError ? 'text-red-600' : 'text-pink-600'}`}>
+                          {fileInputRef.current?.files?.[0]?.name || "Click to upload image"}
+                        </p>
+                      </>
+                    )}
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={() => setUploadError(null)}
                       disabled={isSubmitting}
-                      className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none disabled:bg-pink-50"
                     />
                   </div>
-                )}
+                </div>
                 
                 {uploadError && (
                   <p className="text-xs text-red-600 font-medium px-1">{uploadError}</p>
