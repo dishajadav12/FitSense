@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const listClosetItems = query({
@@ -27,6 +27,7 @@ export const addClosetItem = mutation({
     imageUrl: v.string(),
     label: v.optional(v.string()),
     type: v.optional(v.string()),
+    createdAt: v.optional(v.number()), // Support both
   },
   handler: async (ctx, args) => {
     const { userId, imageUrl, label, type } = args;
@@ -35,7 +36,7 @@ export const addClosetItem = mutation({
       imageUrl,
       label,
       type,
-      createdAt: Date.now(),
+      createdAt: args.createdAt ?? Date.now(),
     });
   },
 });

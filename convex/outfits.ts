@@ -1,7 +1,6 @@
 import { query, mutation, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
 
 export const listHistory = query({
   args: { userId: v.string() },
@@ -50,7 +49,6 @@ export const generateTop3OutfitsWithTryOn = action({
     const profilePhotoUrlData = await ctx.runQuery(api.profile.getProfilePhoto, {
       userId: args.userId,
     });
-    // Ensure we have a string URL if it's not null
     const profilePhotoUrl = profilePhotoUrlData;
 
     const itemsSummary = closetItems
@@ -77,7 +75,13 @@ export const generateTop3OutfitsWithTryOn = action({
         }),
       });
       const textData: any = await textResponse.json();
-      results = JSON.parse(textData.choices[0].message.content).results;
+      
+      if (textData.choices && textData.choices[0] && textData.choices[0].message) {
+        const content = textData.choices[0].message.content;
+        results = JSON.parse(content).results;
+      } else {
+        throw new Error("Invalid response structure from MiniMax");
+      }
     } catch (e) {
       console.error("Text generation failed", e);
       results = [
@@ -107,7 +111,7 @@ export const generateTop3OutfitsWithTryOn = action({
             }),
           });
           const imgData: any = await imgResponse.json();
-          base64 = imgData.base64;
+          base64 = imgData.base64 || null;
         } catch (e) {
           console.error("Image generation failed", e);
         }
