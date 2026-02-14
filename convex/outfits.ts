@@ -83,8 +83,11 @@ export const generateTop3OutfitsWithTryOn = action({
       const textData: any = await textResponse.json();
       
       if (textData.choices && textData.choices[0] && textData.choices[0].message) {
-        const content = textData.choices[0].message.content;
-        const parsed = JSON.parse(content);
+        let content = textData.choices[0].message.content;
+        content = content.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error(`No JSON found in response: ${content.substring(0, 200)}`);
+        const parsed = JSON.parse(jsonMatch[0]);
         results = parsed.results || parsed.outfits || [];
       } else {
         throw new Error(`Invalid MiniMax response structure: ${JSON.stringify(textData)}`);
