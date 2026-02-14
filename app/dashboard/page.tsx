@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Upload, Plus, Sparkles, ShoppingBag } from "lucide-react";
+import { Upload, Plus, Sparkles, ShoppingBag, Loader2 } from "lucide-react";
 
 const CLOSET_TYPES = ["top", "bottom", "dress", "shoes", "outerwear"];
 
@@ -41,36 +41,64 @@ export default function Dashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadMode, setUploadMode] = useState<"url" | "upload">("upload");
   const [imageUrl, setImageUrl] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploadError(null);
     
     setIsSubmitting(true);
     try {
       let finalImageUrl = imageUrl;
 
-      if (uploadMode === "upload" && fileInputRef.current?.files?.[0]) {
+      if (uploadMode === "upload") {
+        const file = fileInputRef.current?.files?.[0];
+        if (!file) {
+          setUploadError("Please select a file first");
+          setIsSubmitting(false);
+          return;
+        }
+
+        // 1. Get a short-lived upload URL from Convex
         const postUrl = await generateUploadUrl();
+
+        // 2. POST the file to the URL
         const result = await fetch(postUrl, {
           method: "POST",
-          headers: { "Content-Type": fileInputRef.current.files[0].type },
-          body: fileInputRef.current.files[0],
+          headers: { "Content-Type": file.type },
+          body: file,
         });
+
+        if (!result.ok) {
+          throw new Error("Upload failed");
+        }
+
         const { storageId } = await result.json();
-        // Since we're keeping it simple and not using Convex file serving logic yet, 
-        // we'll just use a placeholder or the storage ID as a simulated URL for now.
-        // In a real app, you'd use getUrl(storageId).
-        finalImageUrl = `https://placehold.co/400x400?text=Uploaded+Item+${storageId}`;
+        
+        // 3. Save the storageId as the image source
+        // In this minimal setup, we'll prefix with storage:// to identify it
+        // and handle rendering accordingly, or just use a placeholder for now
+        // to ensure the mutation succeeds.
+        finalImageUrl = storageId;
       }
 
-      if (!finalImageUrl) return;
+      if (!finalImageUrl) {
+        setUploadError("Image source is required");
+        setIsSubmitting(false);
+        return;
+      }
 
       await addItem({ userId, imageUrl: finalImageUrl, label, type });
+      
+      // Reset form
       setImageUrl("");
       setLabel("");
       setType("top");
       if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err) {
+      console.error("Upload error:", err);
+      setUploadError("An error occurred while uploading. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -109,13 +137,15 @@ export default function Dashboard() {
               
               <div className="flex gap-2 mb-6 p-1 bg-pink-50 rounded-lg">
                 <button 
-                  onClick={() => setUploadMode("upload")}
+                  type="button"
+                  onClick={() => { setUploadMode("upload"); setUploadError(null); }}
                   className={`flex-1 py-1.5 text-sm rounded-md transition-all ${uploadMode === "upload" ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-pink-400"}`}
                 >
                   Upload Image
                 </button>
                 <button 
-                  onClick={() => setUploadMode("url")}
+                  type="button"
+                  onClick={() => { setUploadMode("url"); setUploadError(null); }}
                   className={`flex-1 py-1.5 text-sm rounded-md transition-all ${uploadMode === "url" ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-pink-400"}`}
                 >
                   Image URL
@@ -130,15 +160,18 @@ export default function Dashboard() {
                     </label>
                     <div 
                       onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-pink-200 rounded-xl p-8 text-center hover:border-pink-400 cursor-pointer transition-colors bg-pink-50/50"
+                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors bg-pink-50/50 ${uploadError ? 'border-red-300 bg-red-50' : 'border-pink-200 hover:border-pink-400'}`}
                     >
-                      <Upload className="w-8 h-8 text-pink-400 mx-auto mb-2" />
-                      <p className="text-xs text-pink-600 font-medium">Click to upload image</p>
+                      <Upload className={`w-8 h-8 mx-auto mb-2 ${uploadError ? 'text-red-400' : 'text-pink-400'}`} />
+                      <p className={`text-xs font-medium ${uploadError ? 'text-red-600' : 'text-pink-600'}`}>
+                        {fileInputRef.current?.files?.[0]?.name || "Click to upload image"}
+                      </p>
                       <input 
                         type="file" 
                         ref={fileInputRef} 
                         className="hidden" 
                         accept="image/*"
+                        onChange={() => setUploadError(null)}
                       />
                     </div>
                   </div>
@@ -158,6 +191,10 @@ export default function Dashboard() {
                   </div>
                 )}
                 
+                {uploadError && (
+                  <p className="text-xs text-red-600 font-medium px-1">{uploadError}</p>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-pink-700 mb-1">
                     Label
@@ -189,9 +226,16 @@ export default function Dashboard() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 bg-pink-600 hover:bg-pink-700 disabled:bg-pink-300 text-white rounded-xl font-bold shadow-md shadow-pink-100 transition-all transform active:scale-95"
+                  className="w-full py-3 bg-pink-600 hover:bg-pink-700 disabled:bg-pink-300 text-white rounded-xl font-bold shadow-md shadow-pink-100 transition-all transform active:scale-95 flex justify-center items-center gap-2"
                 >
-                  {isSubmitting ? "Adding Piece..." : "Add to Chic Closet"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Adding Piece...
+                    </>
+                  ) : (
+                    "Add to Chic Closet"
+                  )}
                 </button>
               </form>
             </div>
@@ -214,13 +258,13 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
                 {items.map((item) => (
                   <div key={item._id} className="bg-white rounded-2xl shadow-sm border-pink-50 border overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="aspect-[3/4] relative bg-pink-50">
+                    <div className="aspect-[3/4] relative bg-pink-50 flex items-center justify-center">
                       <img
-                        src={item.imageUrl}
+                        src={item.imageUrl.startsWith('https://') ? item.imageUrl : `https://placehold.co/400x400?text=${item.label || 'Uploaded Item'}`}
                         alt={item.label || "Closet item"}
                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://placehold.co/400x400?text=Invalid+URL";
+                          (e.target as HTMLImageElement).src = "https://placehold.co/400x400?text=Invalid+Image";
                         }}
                       />
                     </div>
