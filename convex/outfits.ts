@@ -23,6 +23,7 @@ export const saveOutfitHistory = internalMutation({
     results: v.array(v.object({
       outfitText: v.string(),
       reason: v.string(),
+      selectedItemIds: v.optional(v.array(v.string())),
       tryOnImageBase64: v.optional(v.any()),
     })),
   },
@@ -46,19 +47,55 @@ export const generateTop3OutfitsWithTryOn = action({
     const closetItems = await ctx.runQuery(api.closet.listClosetItems, {
       userId: args.userId,
     });
-    const profilePhotoUrlData = await ctx.runQuery(api.profile.getProfilePhoto, {
+    const profilePhotoUrl = await ctx.runQuery(api.profile.getProfilePhoto, {
       userId: args.userId,
     });
-    const profilePhotoUrl = profilePhotoUrlData;
 
-    const itemsSummary = closetItems
-      .map((item: any) => `${item.type}: ${item.label || "unlabeled"}`)
-      .join(", ");
+    if (!closetItems || closetItems.length === 0) {
+      throw new Error("Your closet is empty. Add some items first!");
+    }
 
-    const textPrompt = `You are a fashion stylist. Based on the user's closet and context, suggest exactly 3 outfits.
-    Closet: ${itemsSummary}
-    Context: Occasion: ${args.occasion}, Mood: ${args.mood}/100, Body State: ${args.bodyState}, Weather: ${args.weatherSummary}
-    Output STRICT JSON only: { "results": [ { "outfitText": "...", "reason": "...", "imagePrompt": "short photorealistic description of user wearing the outfit" } ] }`;
+    const itemCatalog = closetItems.map((item: any, idx: number) => ({
+      id: item._id,
+      index: idx,
+      type: item.type || "unknown",
+      label: item.label || "unlabeled item",
+      imageUrl: item.imageUrl,
+    }));
+
+    const catalogText = itemCatalog
+      .map((item: any) => `ID:"${item.id}" | Type:${item.type} | Label:"${item.label}" | Image:${item.imageUrl}`)
+      .join("\n");
+
+    const textPrompt = `You are a professional women's fashion stylist. You have access to the user's ENTIRE wardrobe below. Your job is to create 3 complete, wearable outfits using ONLY items from this wardrobe.
+
+WARDROBE INVENTORY:
+${catalogText}
+
+STYLING CONTEXT:
+- Occasion: ${args.occasion}
+- Mood level: ${args.mood}/100 (0=minimal/subdued, 100=bold/expressive)
+- Body state: ${args.bodyState}
+- Weather: ${args.weatherSummary}
+
+RULES:
+1. Each outfit MUST use only items listed above — reference them by their exact ID
+2. Each outfit should include a logical combination (e.g. top+bottom+shoes, or dress+shoes+outerwear)
+3. Do NOT reuse the same item across multiple outfits unless necessary
+4. Consider the occasion, weather, mood, and body state when selecting items
+5. Provide a short outfit name, the reason it works, and a detailed visual description of the complete look
+
+Output STRICT JSON only:
+{
+  "results": [
+    {
+      "outfitText": "Short creative outfit name",
+      "reason": "Why this combination works for the context",
+      "selectedItemIds": ["id1", "id2", "id3"],
+      "imagePrompt": "Detailed description of a woman wearing: [describe each selected garment precisely — its color, fabric, fit, style]. Full-body, front-facing, fashion editorial pose"
+    }
+  ]
+}`;
 
     let results: any[] = [];
     try {
@@ -74,14 +111,14 @@ export const generateTop3OutfitsWithTryOn = action({
           response_format: { type: "json_object" },
         }),
       });
-      
+
       if (!textResponse.ok) {
         const errorText = await textResponse.text();
         throw new Error(`MiniMax Text API Error: ${textResponse.status} - ${errorText}`);
       }
 
       const textData: any = await textResponse.json();
-      
+
       if (textData.choices && textData.choices[0] && textData.choices[0].message) {
         let content = textData.choices[0].message.content;
         content = content.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
@@ -93,14 +130,38 @@ export const generateTop3OutfitsWithTryOn = action({
         throw new Error(`Invalid MiniMax response structure: ${JSON.stringify(textData)}`);
       }
     } catch (e) {
-      console.error("Text generation error details:", e);
-      throw e; // Stop execution if text generation fails
+      console.error("Text generation error:", e);
+      throw e;
     }
 
+    const validItemIds = new Set(itemCatalog.map((i: any) => i.id));
+    const itemsByType: Record<string, any[]> = {};
+    for (const item of itemCatalog) {
+      if (!itemsByType[item.type]) itemsByType[item.type] = [];
+      itemsByType[item.type].push(item);
+    }
+
+    const usedIds = new Set<string>();
     const finalResults = [];
     for (const res of results) {
+      let selectedIds = (res.selectedItemIds || []).filter((id: string) => validItemIds.has(id));
+
+      if (selectedIds.length === 0) {
+        const fallback: string[] = [];
+        for (const t of ["top", "bottom", "shoes", "dress", "outerwear"]) {
+          const available = (itemsByType[t] || []).filter((i: any) => !usedIds.has(i.id));
+          if (available.length > 0) {
+            fallback.push(available[0].id);
+            usedIds.add(available[0].id);
+          }
+          if (fallback.length >= 3) break;
+        }
+        selectedIds = fallback;
+      }
+      selectedIds.forEach((id: string) => usedIds.add(id));
+
       let base64 = undefined;
-      if (profilePhotoUrl) {
+      if (profilePhotoUrl && res.imagePrompt) {
         try {
           const imgResponse: any = await fetch("https://api.minimax.io/v1/image_generation", {
             method: "POST",
@@ -110,7 +171,7 @@ export const generateTop3OutfitsWithTryOn = action({
             },
             body: JSON.stringify({
               model: "image-01",
-              prompt: `${res.imagePrompt}, photorealistic, full-body, front view, neutral studio background, fashion photography, accurate clothing textures`,
+              prompt: `${res.imagePrompt}, photorealistic, full-body, front view, neutral studio background, fashion photography, accurate clothing textures and colors`,
               aspect_ratio: "3:4",
               subject_reference: [{ type: "character", image_file: profilePhotoUrl }],
               response_format: "base64",
@@ -119,24 +180,24 @@ export const generateTop3OutfitsWithTryOn = action({
 
           if (!imgResponse.ok) {
             const errorText = await imgResponse.text();
-            throw new Error(`MiniMax Image API Error: ${imgResponse.status} - ${errorText}`);
-          }
-
-          const imgData: any = await imgResponse.json();
-          if (imgData.data?.image_base64?.[0]) {
-            base64 = imgData.data.image_base64[0];
-          } else if (imgData.base64) {
-            base64 = imgData.base64;
+            console.error(`Image API Error: ${imgResponse.status} - ${errorText}`);
           } else {
-            console.warn("MiniMax image: unexpected response shape", JSON.stringify(imgData).substring(0, 200));
+            const imgData: any = await imgResponse.json();
+            if (imgData.data?.image_base64?.[0]) {
+              base64 = imgData.data.image_base64[0];
+            } else if (imgData.base64) {
+              base64 = imgData.base64;
+            }
           }
         } catch (e) {
-          console.error("Image generation error details:", e);
+          console.error("Image generation error:", e);
         }
       }
+
       finalResults.push({
         outfitText: res.outfitText || "Stylish Look",
-        reason: res.reason || "Suggested based on your style and context.",
+        reason: res.reason || "A great combination from your wardrobe.",
+        selectedItemIds: selectedIds,
         tryOnImageBase64: base64,
       });
     }

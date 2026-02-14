@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useSearchParams } from "next/navigation";
-import { Plus, Sparkles, ShoppingBag, Loader2, Cloud, Image as ImageIcon, Upload } from "lucide-react";
+import { Plus, Sparkles, ShoppingBag, Loader2, Cloud, Image as ImageIcon, Upload, Shirt } from "lucide-react";
 
 const OCCASIONS = ["Work", "Date", "Casual", "Party"];
 const CLOSET_TYPES = ["top", "bottom", "dress", "shoes", "outerwear"];
@@ -42,10 +42,9 @@ export default function Dashboard() {
   const [city, setCity] = useState("San Francisco");
   const [weather, setWeather] = useState<{ temp: number; condition: string } | null>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
-  
+
   const [results, setResults] = useState<any[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  // Closet Add State
   const [label, setLabel] = useState("");
   const [type, setType] = useState("top");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,22 +123,25 @@ export default function Dashboard() {
     }
   };
 
+  const getItemById = (id: string) => items?.find(item => item._id === id);
+
   return (
     <div className="min-h-screen bg-pink-50 p-8 text-gray-900">
       <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <ShoppingBag className="text-pink-600 w-8 h-8" />
-            <h1 className="text-3xl font-bold text-pink-900">FitSense Dashboard</h1>
+            <h1 className="text-3xl font-bold text-pink-900" data-testid="text-dashboard-title">FitSense Dashboard</h1>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={() => setView(view === "add" ? "default" : "add")}
               className={`px-4 py-2 rounded-full transition-colors font-medium border-2 ${view === "add" ? 'bg-white border-pink-200 text-pink-600' : 'bg-pink-600 border-pink-600 text-white'}`}
+              data-testid="button-toggle-add"
             >
               {view === "add" ? "Back" : "Add Piece"}
             </button>
-            <button onClick={loadDemo} className="flex items-center gap-2 px-4 py-2 bg-pink-200 hover:bg-pink-300 text-pink-900 rounded-full font-medium">
+            <button onClick={loadDemo} className="flex items-center gap-2 px-4 py-2 bg-pink-200 hover:bg-pink-300 text-pink-900 rounded-full font-medium" data-testid="button-load-demo">
               <Sparkles className="w-4 h-4" /> Load 15 Items
             </button>
           </div>
@@ -150,16 +152,16 @@ export default function Dashboard() {
             <div className="bg-white p-8 rounded-2xl shadow-sm border-pink-100 border-2 space-y-6">
               <h2 className="text-2xl font-bold text-pink-800 flex items-center gap-2"><Plus className="w-6 h-6" /> Add Piece</h2>
               <form onSubmit={handleAddPiece} className="space-y-4">
-                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-pink-200 rounded-xl p-8 text-center cursor-pointer hover:bg-pink-50 transition-colors">
+                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-pink-200 rounded-xl p-8 text-center cursor-pointer hover:bg-pink-50 transition-colors" data-testid="button-upload-garment">
                   {isUploading ? <Loader2 className="w-8 h-8 animate-spin mx-auto text-pink-400" /> : <Upload className="w-8 h-8 mx-auto text-pink-400 mb-2" />}
                   <p className="text-sm text-pink-600">{uploadedStorageId ? "Image Selected" : "Click to upload garment"}</p>
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleClosetFileChange} />
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleClosetFileChange} data-testid="input-garment-file" />
                 </div>
-                <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Item label (e.g. Silk Blouse)" className="w-full px-4 py-3 border-pink-200 border rounded-xl" />
-                <select value={type} onChange={e => setType(e.target.value)} className="w-full px-4 py-3 border-pink-200 border rounded-xl bg-white">
+                <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Item label (e.g. Silk Blouse)" className="w-full px-4 py-3 border-pink-200 border rounded-xl" data-testid="input-item-label" />
+                <select value={type} onChange={e => setType(e.target.value)} className="w-full px-4 py-3 border-pink-200 border rounded-xl bg-white" data-testid="select-item-type">
                   {CLOSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <button type="submit" disabled={isSubmitting || !uploadedStorageId} className="w-full py-4 bg-pink-600 text-white rounded-2xl font-bold disabled:bg-pink-200 transition-all">
+                <button type="submit" disabled={isSubmitting || !uploadedStorageId} className="w-full py-4 bg-pink-600 text-white rounded-2xl font-bold disabled:bg-pink-200 transition-all" data-testid="button-save-closet">
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save to Closet"}
                 </button>
               </form>
@@ -173,55 +175,86 @@ export default function Dashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-pink-700">Occasion</label>
-                    <select value={occasion} onChange={e => setOccasion(e.target.value)} className="w-full px-3 py-2 border-pink-200 border rounded-lg bg-white">
+                    <select value={occasion} onChange={e => setOccasion(e.target.value)} className="w-full px-3 py-2 border-pink-200 border rounded-lg bg-white" data-testid="select-occasion">
                       {OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="flex justify-between text-sm font-medium text-pink-700">Mood <span>{mood}%</span></label>
-                    <input type="range" min="0" max="100" value={mood} onChange={e => setMood(parseInt(e.target.value))} className="w-full accent-pink-500" />
+                    <input type="range" min="0" max="100" value={mood} onChange={e => setMood(parseInt(e.target.value))} className="w-full accent-pink-500" data-testid="input-mood" />
                   </div>
                   <div className="flex p-1 bg-pink-50 rounded-xl border border-pink-100">
-                    <button onClick={() => setIsBloated(false)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!isBloated ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-400'}`}>Normal</button>
-                    <button onClick={() => setIsBloated(true)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${isBloated ? 'bg-pink-600 text-white shadow-sm' : 'text-gray-400'}`}>Bloated</button>
+                    <button onClick={() => setIsBloated(false)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!isBloated ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-400'}`} data-testid="button-normal">Normal</button>
+                    <button onClick={() => setIsBloated(true)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${isBloated ? 'bg-pink-600 text-white shadow-sm' : 'text-gray-400'}`} data-testid="button-bloated">Bloated</button>
                   </div>
                   <div className="flex gap-2">
-                    <input value={city} onChange={e => setCity(e.target.value)} className="flex-1 px-3 py-2 border-pink-200 border rounded-lg text-sm" />
-                    <button onClick={fetchWeather} className="p-2 bg-pink-100 rounded-lg text-pink-700">
+                    <input value={city} onChange={e => setCity(e.target.value)} className="flex-1 px-3 py-2 border-pink-200 border rounded-lg text-sm" data-testid="input-city" />
+                    <button onClick={fetchWeather} className="p-2 bg-pink-100 rounded-lg text-pink-700" data-testid="button-fetch-weather">
                       {isWeatherLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-                <button onClick={handleRecommend} disabled={isGenerating} className="w-full py-4 bg-pink-600 text-white rounded-2xl font-bold shadow-lg flex justify-center items-center gap-2 hover:bg-pink-700 disabled:bg-pink-300 transition-all active:scale-95">
+                <button onClick={handleRecommend} disabled={isGenerating} className="w-full py-4 bg-pink-600 text-white rounded-2xl font-bold shadow-lg flex justify-center items-center gap-2 hover:bg-pink-700 disabled:bg-pink-300 transition-all active:scale-95" data-testid="button-generate">
                   {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  Generate Try-Ons
+                  Generate Outfits
                 </button>
               </div>
-
             </div>
 
             <div className="lg:col-span-2 space-y-8">
-              <h2 className="text-xl font-semibold text-pink-900 flex items-center gap-2"><Sparkles className="w-6 h-6 text-pink-600" /> AI Suggestions</h2>
+              <h2 className="text-xl font-semibold text-pink-900 flex items-center gap-2"><Sparkles className="w-6 h-6 text-pink-600" /> AI Outfit Picks</h2>
               {results ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {results.map((res, i) => (
-                    <div key={i} className="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-sm flex flex-col gap-4">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden bg-pink-50 border border-pink-50">
-                        {res.tryOnImageBase64 ? (
-                          <img src={`data:image/jpeg;base64,${res.tryOnImageBase64}`} alt={res.outfitText} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="text-pink-200 flex flex-col items-center justify-center h-full p-4 text-center">
-                            <ImageIcon className="w-8 h-8 mb-2" />
-                            <p className="text-[10px] font-bold">Image Generating...</p>
+                <div className="space-y-6">
+                  {results.map((res, i) => {
+                    const selectedItems = (res.selectedItemIds || [])
+                      .map((id: string) => getItemById(id))
+                      .filter(Boolean);
+
+                    return (
+                      <div key={i} className="bg-white rounded-2xl border-2 border-pink-100 shadow-sm overflow-hidden" data-testid={`card-outfit-${i}`}>
+                        <div className="flex flex-col md:flex-row">
+                          <div className="md:w-64 flex-shrink-0 bg-pink-50">
+                            {res.tryOnImageBase64 ? (
+                              <img src={`data:image/jpeg;base64,${res.tryOnImageBase64}`} alt={res.outfitText} className="w-full h-full object-cover aspect-[3/4] md:aspect-auto" />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center h-full min-h-[200px] p-6 text-center">
+                                <ImageIcon className="w-10 h-10 text-pink-200 mb-2" />
+                                <p className="text-xs text-pink-300 font-medium">Try-on image</p>
+                              </div>
+                            )}
                           </div>
-                        )}
+
+                          <div className="flex-1 p-5 space-y-4">
+                            <div>
+                              <h3 className="font-bold text-pink-900 text-lg" data-testid={`text-outfit-name-${i}`}>{res.outfitText}</h3>
+                              <p className="text-sm text-gray-500 italic mt-1">{res.reason}</p>
+                            </div>
+
+                            {selectedItems.length > 0 && (
+                              <div>
+                                <p className="text-xs font-bold text-pink-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                  <Shirt className="w-3 h-3" /> From your closet
+                                </p>
+                                <div className="flex gap-3 flex-wrap">
+                                  {selectedItems.map((item: any) => (
+                                    <div key={item._id} className="flex items-center gap-2 bg-pink-50 rounded-xl p-2 pr-3" data-testid={`pill-item-${item._id}`}>
+                                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-pink-100 flex-shrink-0">
+                                        <img src={item.imageUrl} alt={item.label || ""} className="w-full h-full object-cover" />
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-pink-900 leading-tight">{item.label}</p>
+                                        <p className="text-[10px] text-pink-400 uppercase">{item.type}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-pink-900 text-sm leading-tight">{res.outfitText}</h3>
-                        <p className="text-[10px] text-gray-500 italic mt-1 line-clamp-2">{res.reason}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="bg-white p-20 rounded-2xl border-2 border-dashed border-pink-100 text-center flex flex-col items-center gap-4">
@@ -234,9 +267,9 @@ export default function Dashboard() {
                 <h2 className="text-xl font-semibold mb-4 text-pink-900">Your Boutique</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {items?.map(item => (
-                    <div key={item._id} className="bg-white rounded-xl shadow-sm border border-pink-50 overflow-hidden">
+                    <div key={item._id} className="bg-white rounded-xl shadow-sm border border-pink-50 overflow-hidden" data-testid={`card-closet-${item._id}`}>
                       <div className="aspect-[3/4] relative bg-pink-50">
-                        <img src={item.imageUrl} alt={item.label || ""} className="w-full h-full object-cover" />
+                        <img src={item.imageUrl ?? ""} alt={item.label ?? ""} className="w-full h-full object-cover" />
                       </div>
                       <div className="p-2 bg-white">
                         <p className="font-bold text-pink-900 text-[10px] truncate">{item.label}</p>
