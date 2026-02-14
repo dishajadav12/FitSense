@@ -10,6 +10,7 @@
 
 import type * as closet from "../closet.js";
 import type * as outfits from "../outfits.js";
+import type * as profile from "../profile.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   closet: typeof closet;
   outfits: typeof outfits;
+  profile: typeof profile;
 }>;
 
 /**

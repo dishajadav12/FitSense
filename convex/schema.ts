@@ -6,25 +6,25 @@ export default defineSchema({
     userId: v.string(),
     imageUrl: v.string(),
     label: v.optional(v.string()),
-    type: v.optional(v.string()), // "top", "bottom", "dress", "shoes", "outerwear"
+    type: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
-  outfits: defineTable({
+  userProfiles: defineTable({
     userId: v.string(),
-    topId: v.id("closetItems"),
-    bottomId: v.id("closetItems"),
-    shoesId: v.id("closetItems"),
-    dateWorn: v.optional(v.string()),
-  }),
+    photoUrl: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
   outfitHistory: defineTable({
     userId: v.string(),
     occasion: v.string(),
     mood: v.number(),
     bodyState: v.string(),
     weatherSummary: v.string(),
-    outfitText: v.string(),
-    reason: v.string(),
-    itemIds: v.optional(v.array(v.string())),
+    results: v.array(v.object({
+      outfitText: v.string(),
+      reason: v.string(),
+      tryOnImageBase64: v.optional(v.string()),
+    })),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
 });

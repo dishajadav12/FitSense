@@ -1,0 +1,158 @@
+We have fitsense (Next.js App Router + Tailwind + Convex). Closet upload/list works. Context + weather summary works.
+
+Now implement Step 4 (upgraded):
+
+User uploads a profile photo URL once (stored in DB).
+
+On “Recommend Outfit”, generate Top 3 outfit suggestions (text + reason).
+
+For each suggestion, generate a try-on preview image of the user wearing the outfit using MiniMax image_generation with subject_reference.
+
+⚠️ Rules:
+
+No auth: use userId="demo".
+
+Keep upload simple: URL inputs only (no file upload).
+
+All MiniMax API calls must be server-side (Convex actions), never in the browser.
+
+Return and render 3 results. No collage. Show 3 separate “try-on” images.
+
+If MiniMax fails, still return text suggestions + placeholder image.
+
+1) Convex Schema
+
+Update /convex/schema.ts add:
+
+userProfiles
+
+userId (string)
+
+photoUrl (string)
+
+createdAt (number)
+
+outfitHistory
+
+userId (string)
+
+occasion (string)
+
+mood (number)
+
+bodyState (string)
+
+weatherSummary (string)
+
+results (array of objects) where each object has:
+
+outfitText (string)
+
+reason (string)
+
+tryOnImageBase64 (string, optional) // store as base64 or data URL
+
+createdAt (number)
+
+2) Convex functions
+
+In /convex/profile.ts:
+
+upsertProfilePhoto mutation: inputs userId, photoUrl → upsert into userProfiles
+
+getProfilePhoto query: input userId → return photoUrl or null
+
+In /convex/outfits.ts:
+Create an action generateTop3OutfitsWithTryOn that:
+
+Inputs: userId, occasion, mood, bodyState, weatherSummary
+
+Reads closet items for user
+
+Reads user profile photoUrl
+
+Calls MiniMax text (OpenAI-compatible) to generate STRICT JSON with top 3:
+
+{
+  "results": [
+    {"outfitText": "...", "reason": "...", "imagePrompt": "..."},
+    {"outfitText": "...", "reason": "...", "imagePrompt": "..."},
+    {"outfitText": "...", "reason": "...", "imagePrompt": "..."}
+  ]
+}
+
+
+Where imagePrompt is a short photorealistic description of the outfit (e.g., “wearing a black blazer, white tee, straight-leg jeans, white sneakers, standing full body”).
+
+Then for each of the 3 results, call MiniMax image generation:
+POST https://api.minimax.io/v1/image_generation
+Headers: Authorization Bearer process.env.MINIMAX_API_KEY
+Body:
+
+model: "image-01"
+
+prompt: use the result’s imagePrompt + add constraints:
+
+“photorealistic, full-body, front view, neutral studio background, fashion photography, accurate clothing textures”
+
+aspect_ratio: "3:4" (portrait)
+
+subject_reference: [{ "type": "character", "image_file": profilePhotoUrl }]
+
+response_format: "base64"
+
+Save the final results to outfitHistory (with base64 strings)
+
+Return results to frontend
+
+Add safe JSON parsing (extract JSON from model output if it adds extra text).
+Add fallback behavior if no profile photo is set: return text results with no images and tell UI to prompt upload.
+
+3) Frontend UI changes
+
+On /app/dashboard/page.tsx:
+
+A) Add a “Profile” card at top:
+
+input: profile photo URL
+
+button: “Save Photo”
+
+show preview image once saved (from Convex query)
+
+B) Outfit generation:
+
+Button “Recommend Outfit”
+
+Calls Convex action generateTop3OutfitsWithTryOn with current context + weather
+
+C) Display results:
+
+Render 3 cards stacked or grid
+
+Each card shows:
+
+Try-on image (use src={"data:image/jpeg;base64," + tryOnImageBase64} if base64 exists)
+
+OutfitText
+
+Reason (1 sentence)
+
+Add “Regenerate” button
+
+4) Deliverable
+
+User can set profile photo URL and see it saved
+
+Click “Recommend Outfit” → shows 3 outfit suggestions
+
+Each suggestion includes a generated try-on image using subject_reference (no collage)
+
+Has fallback if MiniMax fails or photo not set
+Stop after completion.
+
+Notes:
+
+Keep everything demo-stable.
+
+Use userId="demo" everywhere.
