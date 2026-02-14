@@ -10,21 +10,23 @@ const OCCASIONS = ["Work", "Date", "Casual", "Party"];
 const CLOSET_TYPES = ["top", "bottom", "dress", "shoes", "outerwear"];
 
 const WOMEN_DEMO_ITEMS = [
-  { imageUrl: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400", label: "Silk Blush Blouse", type: "top" },
-  { imageUrl: "https://images.unsplash.com/photo-1551733592-220209dd043d?w=400", label: "Flowy Floral Skirt", type: "bottom" },
-  { imageUrl: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400", label: "Summer Sundress", type: "dress" },
-  { imageUrl: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400", label: "Rose Gold Heels", type: "shoes" },
-  { imageUrl: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=400", label: "Cozy Wool Sweater", type: "top" },
-  { imageUrl: "https://images.unsplash.com/photo-1582533561751-ef6f6ab93a2e?w=400", label: "Elegant Maxi Dress", type: "dress" },
-  { imageUrl: "https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=400", label: "White Linen Shirt", type: "top" },
-  { imageUrl: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400", label: "Classic Denim Jeans", type: "bottom" },
-  { imageUrl: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=400", label: "Black Midi Skirt", type: "bottom" },
-  { imageUrl: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=400", label: "Pastel Satin Slip", type: "dress" },
-  { imageUrl: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400", label: "Tailored Beige Blazer", type: "outerwear" },
-  { imageUrl: "https://images.unsplash.com/photo-1509319117193-57bab727e09d?w=400", label: "Ruffled Wrap Top", type: "top" },
-  { imageUrl: "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=400", label: "Wide Leg Trousers", type: "bottom" },
-  { imageUrl: "https://images.unsplash.com/photo-1518049362265-d5b2a6467637?w=400", label: "Boho Chic Kimono", type: "outerwear" },
-  { imageUrl: "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=400", label: "White Fashion Sneakers", type: "shoes" },
+  { imageUrl: "/demo/silk-blush-blouse.jpg", label: "Black Structured Jacket", type: "outerwear" },
+  { imageUrl: "/demo/flowy-floral-skirt.jpg", label: "Off-Shoulder Knit Top", type: "top" },
+  { imageUrl: "/demo/summer-sundress.jpg", label: "Lavender A-Line Dress", type: "dress" },
+  { imageUrl: "/demo/rose-gold-heels.jpg", label: "Turquoise Patent Heels", type: "shoes" },
+  { imageUrl: "/demo/cozy-wool-sweater.jpg", label: "Striped Knit Sweater", type: "top" },
+  { imageUrl: "/demo/elegant-maxi-dress.jpg", label: "Purple Evening Gown", type: "dress" },
+  { imageUrl: "/demo/white-linen-shirt.jpg", label: "Magenta Plaid Flannel", type: "top" },
+  { imageUrl: "/demo/classic-denim-jeans.jpg", label: "Classic Blue Jeans", type: "bottom" },
+  { imageUrl: "/demo/black-midi-skirt.jpg", label: "Black Lace Blouse", type: "top" },
+  { imageUrl: "/demo/pastel-satin-slip.jpg", label: "Coral Flowing Gown", type: "dress" },
+  { imageUrl: "/demo/tailored-beige-blazer.jpg", label: "Grey Tweed Jacket", type: "outerwear" },
+  { imageUrl: "/demo/ruffled-wrap-top.jpg", label: "Gold Embellished Top", type: "top" },
+  { imageUrl: "/demo/wide-leg-trousers.jpg", label: "Black Jogger Pants", type: "bottom" },
+  { imageUrl: "/demo/boho-chic-kimono.jpg", label: "Beige Open Cardigan", type: "outerwear" },
+  { imageUrl: "/demo/white-fashion-sneakers.jpg", label: "Tan Suede Sneakers", type: "shoes" },
+  { imageUrl: "/demo/beige-wide-pants.jpg", label: "Black Zip Joggers", type: "bottom" },
+  { imageUrl: "/demo/pleated-midi-skirt.jpg", label: "Striped Lace T-Shirt", type: "top" },
 ];
 
 export default function Dashboard() {
@@ -80,12 +82,17 @@ export default function Dashboard() {
       if (items && items.length > 0) {
         setAnalysisStatus("Scanning your wardrobe with AI vision...");
         try {
-          const analyzePayload = items.map((item) => ({
-            id: item._id,
-            imageUrl: item.imageUrl ?? "",
-            type: item.type ?? "unknown",
-            label: item.label ?? "item",
-          }));
+          const origin = window.location.origin;
+          const analyzePayload = items.map((item) => {
+            let url = item.imageUrl ?? "";
+            if (url.startsWith("/")) url = origin + url;
+            return {
+              id: item._id,
+              imageUrl: url,
+              type: item.type ?? "unknown",
+              label: item.label ?? "item",
+            };
+          });
           const analyzeRes = await fetch("/api/analyze-closet", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -174,7 +181,7 @@ export default function Dashboard() {
               {view === "add" ? "Back" : "Add Piece"}
             </button>
             <button onClick={loadDemo} className="flex items-center gap-2 px-4 py-2 bg-pink-200 hover:bg-pink-300 text-pink-900 rounded-full font-medium" data-testid="button-load-demo">
-              <Sparkles className="w-4 h-4" /> Load 15 Items
+              <Sparkles className="w-4 h-4" /> Load Demo Closet
             </button>
           </div>
         </div>
