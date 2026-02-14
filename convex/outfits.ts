@@ -1,6 +1,7 @@
 import { query, mutation, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
+import { Doc, Id } from "./_generated/dataModel";
 
 export const listHistory = query({
   args: { userId: v.string() },
@@ -42,7 +43,7 @@ export const generateTop3OutfitsWithTryOn = action({
     bodyState: v.string(),
     weatherSummary: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any[]> => {
     const closetItems = await ctx.runQuery(api.closet.listClosetItems, {
       userId: args.userId,
     });
@@ -51,7 +52,7 @@ export const generateTop3OutfitsWithTryOn = action({
     });
 
     const itemsSummary = closetItems
-      .map((item) => `${item.type}: ${item.label || "unlabeled"}`)
+      .map((item: any) => `${item.type}: ${item.label || "unlabeled"}`)
       .join(", ");
 
     const textPrompt = `You are a fashion stylist. Based on the user's closet and context, suggest exactly 3 outfits.
@@ -73,7 +74,7 @@ export const generateTop3OutfitsWithTryOn = action({
           response_format: { type: "json_object" },
         }),
       });
-      const textData = await textResponse.json();
+      const textData: any = await textResponse.json();
       results = JSON.parse(textData.choices[0].message.content).results;
     } catch (e) {
       console.error("Text generation failed", e);
@@ -89,7 +90,7 @@ export const generateTop3OutfitsWithTryOn = action({
       let base64 = null;
       if (profilePhotoUrl) {
         try {
-          const imgResponse = await fetch("https://api.minimax.io/v1/image_generation", {
+          const imgResponse: any = await fetch("https://api.minimax.io/v1/image_generation", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -103,7 +104,7 @@ export const generateTop3OutfitsWithTryOn = action({
               response_format: "base64",
             }),
           });
-          const imgData = await imgResponse.json();
+          const imgData: any = await imgResponse.json();
           base64 = imgData.base64;
         } catch (e) {
           console.error("Image generation failed", e);
