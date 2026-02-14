@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///home/runner/workspace/app/ConvexClientProvider.tsx"],"sourcesContent":["\"use client\";\nimport { ReactNode } from \"react\";\nimport { ConvexProvider, ConvexReactClient } from \"convex/react\";\n\nconst convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);\n\nexport default function ConvexClientProvider({\n  children,\n}: {\n  children: ReactNode;\n}) {\n  return <ConvexProvider client={convex}>{children}</ConvexProvider>;\n}\n"],"names":[],"mappings":";;;;;AAEA;AAAA;AAFA;;;AAIA,MAAM,SAAS,IAAI,6KAAiB;AAErB,SAAS,qBAAqB,EAC3C,QAAQ,EAGT;IACC,qBAAO,8OAAC,0KAAc;QAAC,QAAQ;kBAAS;;;;;;AAC1C"}}]
+}

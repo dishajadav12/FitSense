@@ -119,7 +119,6 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Add Closet Item Form */}
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2 sticky top-8">
               <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
@@ -245,7 +244,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Closet Grid */}
           <div className="lg:col-span-2">
             <h2 className="text-xl font-semibold mb-4 text-pink-900">Your Boutique</h2>
             {!items ? (
@@ -264,7 +262,7 @@ export default function Dashboard() {
                   <div key={item._id} className="bg-white rounded-2xl shadow-sm border-pink-50 border overflow-hidden group hover:shadow-md transition-shadow">
                     <div className="aspect-[3/4] relative bg-pink-50 flex items-center justify-center">
                       <img
-                        src={item.imageUrl.startsWith('https://') ? item.imageUrl : `https://placehold.co/400x400?text=${item.label || 'Uploaded Item'}`}
+                        src={item.imageUrl}
                         alt={item.label || "Closet item"}
                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
                         onError={(e) => {
