@@ -60,10 +60,7 @@ export default function Dashboard() {
           return;
         }
 
-        // 1. Get a short-lived upload URL from Convex
         const postUrl = await generateUploadUrl();
-
-        // 2. POST the file to the URL
         const result = await fetch(postUrl, {
           method: "POST",
           headers: { "Content-Type": file.type },
@@ -75,11 +72,6 @@ export default function Dashboard() {
         }
 
         const { storageId } = await result.json();
-        
-        // 3. Save the storageId as the image source
-        // In this minimal setup, we'll prefix with storage:// to identify it
-        // and handle rendering accordingly, or just use a placeholder for now
-        // to ensure the mutation succeeds.
         finalImageUrl = storageId;
       }
 
@@ -91,7 +83,6 @@ export default function Dashboard() {
 
       await addItem({ userId, imageUrl: finalImageUrl, label, type });
       
-      // Reset form
       setImageUrl("");
       setLabel("");
       setType("top");
@@ -159,19 +150,29 @@ export default function Dashboard() {
                       Choose Photo
                     </label>
                     <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors bg-pink-50/50 ${uploadError ? 'border-red-300 bg-red-50' : 'border-pink-200 hover:border-pink-400'}`}
+                      onClick={() => !isSubmitting && fileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors bg-pink-50/50 relative ${uploadError ? 'border-red-300 bg-red-50' : 'border-pink-200 hover:border-pink-400'} ${isSubmitting ? 'cursor-not-allowed opacity-70' : ''}`}
                     >
-                      <Upload className={`w-8 h-8 mx-auto mb-2 ${uploadError ? 'text-red-400' : 'text-pink-400'}`} />
-                      <p className={`text-xs font-medium ${uploadError ? 'text-red-600' : 'text-pink-600'}`}>
-                        {fileInputRef.current?.files?.[0]?.name || "Click to upload image"}
-                      </p>
+                      {isSubmitting ? (
+                        <div className="flex flex-col items-center">
+                          <Loader2 className="w-8 h-8 text-pink-500 animate-spin mb-2" />
+                          <p className="text-xs text-pink-600 font-medium">Uploading piece...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className={`w-8 h-8 mx-auto mb-2 ${uploadError ? 'text-red-400' : 'text-pink-400'}`} />
+                          <p className={`text-xs font-medium ${uploadError ? 'text-red-600' : 'text-pink-600'}`}>
+                            {fileInputRef.current?.files?.[0]?.name || "Click to upload image"}
+                          </p>
+                        </>
+                      )}
                       <input 
                         type="file" 
                         ref={fileInputRef} 
                         className="hidden" 
                         accept="image/*"
                         onChange={() => setUploadError(null)}
+                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
@@ -186,7 +187,8 @@ export default function Dashboard() {
                       value={imageUrl}
                       onChange={(e) => setImageUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none disabled:bg-pink-50"
                     />
                   </div>
                 )}
@@ -204,7 +206,8 @@ export default function Dashboard() {
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     placeholder="e.g. Favorite Pink Dress"
-                    className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                    disabled={isSubmitting}
+                    className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none disabled:bg-pink-50"
                   />
                 </div>
                 <div>
@@ -214,7 +217,8 @@ export default function Dashboard() {
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none bg-white"
+                    disabled={isSubmitting}
+                    className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none bg-white disabled:bg-pink-50"
                   >
                     {CLOSET_TYPES.map((t) => (
                       <option key={t} value={t}>
