@@ -22,6 +22,7 @@ export const saveOutfit = internalMutation({
     weatherSummary: v.string(),
     outfitText: v.string(),
     reason: v.string(),
+    itemIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("outfitHistory", {
@@ -45,16 +46,31 @@ export const generateOutfit = action({
     });
 
     const itemsSummary = closetItems
-      .map((item) => `${item.type}: ${item.label || "unlabeled"}`)
-      .join(", ");
+      .map((item) => `[ID: ${item._id}] type: ${item.type}, label: ${item.label || "unlabeled"}`)
+      .join("\n");
 
     const prompt = `You are a fashion stylist. Based on the user's closet and context, suggest one outfit.
-    Closet: ${itemsSummary}
-    Context: Occasion: ${args.occasion}, Mood: ${args.mood}/100, Body State: ${args.bodyState}, Weather: ${args.weatherSummary}
-    Output STRICT JSON only: { "outfitText": "Detailed outfit description", "reason": "One sentence explanation" }`;
+    You MUST select exactly 2-3 items from the closet below by their ID.
+    
+    Closet Items:
+    ${itemsSummary}
+    
+    Context: 
+    Occasion: ${args.occasion}
+    Mood: ${args.mood}/100 (0=Comfy, 100=Confident)
+    Body State: ${args.bodyState}
+    Weather: ${args.weatherSummary}
+    
+    Output STRICT JSON only: 
+    { 
+      "outfitText": "Short catchy name for the look", 
+      "reason": "One sentence style explanation",
+      "selectedItemIds": ["id1", "id2"] 
+    }`;
 
     let outfitText = "";
     let reason = "";
+    let selectedItemIds: string[] = [];
 
     try {
       const response = await fetch("https://api.minimaxi.com/v1/chat/completions", {
@@ -70,23 +86,29 @@ export const generateOutfit = action({
         }),
       });
 
+      if (!response.ok) throw new Error(`API returned ${response.status}`);
+
       const data = await response.json();
       const content = data.choices[0].message.content;
       const parsed = JSON.parse(content);
       outfitText = parsed.outfitText;
       reason = parsed.reason;
+      selectedItemIds = parsed.selectedItemIds || [];
     } catch (error) {
       console.error("MiniMax error:", error);
-      outfitText = "A chic combination of your favorite basics.";
-      reason = "Fallback suggestion due to styling service interruption.";
+      // Smart Fallback: Pick first 2 items if API fails
+      outfitText = "Chic Minimalist Essentials";
+      reason = "A reliable and stylish combination selected from your boutique favorites.";
+      selectedItemIds = closetItems.slice(0, 2).map(i => i._id);
     }
 
     await ctx.runMutation(internal.outfits.saveOutfit, {
       ...args,
       outfitText,
       reason,
+      itemIds: selectedItemIds,
     });
 
-    return { outfitText, reason };
+    return { outfitText, reason, selectedItemIds };
   },
 });

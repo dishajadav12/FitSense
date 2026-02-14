@@ -41,12 +41,10 @@ export default function Dashboard() {
   const generateUploadUrl = useMutation(api.closet.generateUploadUrl);
   const generateOutfit = useAction(api.outfits.generateOutfit);
 
-  // View state
   const [view, setView] = useState<"default" | "add">(
     searchParams.get("view") === "add" ? "add" : "default"
   );
 
-  // Closet State
   const [label, setLabel] = useState("");
   const [type, setType] = useState("top");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +53,6 @@ export default function Dashboard() {
   const [uploadedStorageId, setUploadedStorageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Context State
   const [occasion, setOccasion] = useState("Casual");
   const [mood, setMood] = useState(50);
   const [isBloated, setIsBloated] = useState(false);
@@ -63,8 +60,7 @@ export default function Dashboard() {
   const [weather, setWeather] = useState<{ temp: number; condition: string } | null>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
 
-  // AI Recommendation State
-  const [recommendation, setRecommendation] = useState<{ outfitText: string, reason: string } | null>(null);
+  const [recommendation, setRecommendation] = useState<{ outfitText: string, reason: string, selectedItemIds?: string[] } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const fetchWeather = async () => {
@@ -160,6 +156,8 @@ export default function Dashboard() {
     }
   };
 
+  const recommendedItems = items?.filter(item => recommendation?.selectedItemIds?.includes(item._id)) || [];
+
   return (
     <div className="min-h-screen bg-pink-50 p-8 text-gray-900">
       <div className="max-w-6xl mx-auto">
@@ -187,7 +185,6 @@ export default function Dashboard() {
 
         {view === "add" ? (
           <div className="max-w-md mx-auto">
-            {/* Add Piece Form UI (Unchanged) */}
             <div className="bg-white p-8 rounded-2xl shadow-sm border-pink-100 border-2">
               <h2 className="text-2xl font-bold mb-6 text-pink-800 flex items-center gap-2">
                 <Plus className="w-6 h-6" /> Add New Piece
@@ -262,7 +259,6 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 space-y-8">
-              {/* Context Section */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
                 <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
                   <Cloud className="w-5 h-5" /> Today's Context
@@ -370,7 +366,6 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Outfit History */}
               {history && history.length > 0 && (
                 <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
                   <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
@@ -388,7 +383,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Right Column: Result & Closet */}
             <div className="lg:col-span-2 space-y-8">
               {/* Outfit Result */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
@@ -396,17 +390,34 @@ export default function Dashboard() {
                   <Sparkles className="w-5 h-5" /> AI Outfit Suggestion
                 </h2>
                 {recommendation ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="bg-pink-600 p-8 rounded-2xl text-white shadow-md">
-                      <p className="text-2xl font-bold leading-relaxed">{recommendation.outfitText}</p>
+                      <p className="text-3xl font-bold leading-relaxed mb-4">{recommendation.outfitText}</p>
+                      <p className="text-sm font-medium opacity-90 italic">Style Reason: {recommendation.reason}</p>
                     </div>
-                    <div className="p-4 bg-pink-50 rounded-xl border border-pink-100">
-                      <p className="text-sm font-medium text-pink-800 italic">Style Reason: {recommendation.reason}</p>
-                    </div>
+                    
+                    {/* Visual Recommendation */}
+                    {recommendedItems.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-pink-900 uppercase tracking-widest px-1">Selected Pieces</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {recommendedItems.map((item) => (
+                            <div key={item._id} className="bg-pink-50/50 rounded-xl border border-pink-100 overflow-hidden aspect-[3/4]">
+                              <img
+                                src={item.imageUrl}
+                                alt={item.label || "Outfit piece"}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       onClick={handleRecommend}
                       disabled={isGenerating}
-                      className="flex items-center gap-2 text-pink-600 font-bold hover:text-pink-700 transition-colors"
+                      className="flex items-center gap-2 text-pink-600 font-bold hover:text-pink-700 transition-colors bg-white px-4 py-2 rounded-full border-2 border-pink-100 shadow-sm"
                     >
                       <Loader2 className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                       Regenerate Look
@@ -420,7 +431,7 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Closet Grid (Unchanged) */}
+              {/* Closet Grid */}
               <div>
                 <h2 className="text-xl font-semibold mb-4 text-pink-900">Your Boutique</h2>
                 {!items ? (
