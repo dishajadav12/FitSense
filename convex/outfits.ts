@@ -23,7 +23,7 @@ export const saveOutfitHistory = internalMutation({
     results: v.array(v.object({
       outfitText: v.string(),
       reason: v.string(),
-      tryOnImageBase64: v.optional(v.string()),
+      tryOnImageBase64: v.optional(v.any()),
     })),
   },
   handler: async (ctx, args) => {
@@ -78,12 +78,22 @@ export const generateTop3OutfitsWithTryOn = action({
       
       if (textData.choices && textData.choices[0] && textData.choices[0].message) {
         const content = textData.choices[0].message.content;
-        results = JSON.parse(content).results;
-      } else {
-        throw new Error("Invalid response structure from MiniMax");
+        try {
+          const parsed = JSON.parse(content);
+          results = parsed.results || parsed.outfits || [];
+        } catch (e) {
+           // Basic extraction if JSON parsing fails
+           const match = content.match(/\{[\s\S]*\}/);
+           if (match) {
+             results = JSON.parse(match[0]).results || [];
+           }
+        }
       }
     } catch (e) {
       console.error("Text generation failed", e);
+    }
+
+    if (!results || results.length === 0) {
       results = [
         { outfitText: "Casual Chic", reason: "Comfortable and stylish for everyday.", imagePrompt: "wearing casual stylish clothes" },
         { outfitText: "Evening Elegance", reason: "Sophisticated look for the night.", imagePrompt: "wearing elegant evening attire" },
@@ -93,7 +103,7 @@ export const generateTop3OutfitsWithTryOn = action({
 
     const finalResults = [];
     for (const res of results) {
-      let base64 = null;
+      let base64 = undefined;
       if (profilePhotoUrl) {
         try {
           const imgResponse: any = await fetch("https://api.minimax.io/v1/image_generation", {
@@ -111,14 +121,14 @@ export const generateTop3OutfitsWithTryOn = action({
             }),
           });
           const imgData: any = await imgResponse.json();
-          base64 = imgData.base64 || null;
+          base64 = imgData.base64 || undefined;
         } catch (e) {
           console.error("Image generation failed", e);
         }
       }
       finalResults.push({
-        outfitText: res.outfitText,
-        reason: res.reason,
+        outfitText: res.outfitText || "Stylish Look",
+        reason: res.reason || "Suggested based on your style and context.",
         tryOnImageBase64: base64,
       });
     }

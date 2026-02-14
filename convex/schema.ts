@@ -28,7 +28,7 @@ export default defineSchema({
     results: v.optional(v.array(v.object({
       outfitText: v.string(),
       reason: v.string(),
-      tryOnImageBase64: v.optional(v.string()),
+      tryOnImageBase64: v.optional(v.any()), // Changed to any to be safer with nulls/undefined
     }))),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
