@@ -123,10 +123,12 @@ export const generateTop3OutfitsWithTryOn = action({
           }
 
           const imgData: any = await imgResponse.json();
-          base64 = imgData.base64 || undefined;
-          
-          if (!base64) {
-            console.warn("MiniMax image generated but no base64 data returned", imgData);
+          if (imgData.data?.image_base64?.[0]) {
+            base64 = imgData.data.image_base64[0];
+          } else if (imgData.base64) {
+            base64 = imgData.base64;
+          } else {
+            console.warn("MiniMax image: unexpected response shape", JSON.stringify(imgData).substring(0, 200));
           }
         } catch (e) {
           console.error("Image generation error details:", e);
