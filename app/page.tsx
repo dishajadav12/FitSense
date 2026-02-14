@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { ShoppingBag, Sparkles, UserCircle, Upload, Loader2, History, Camera } from "lucide-react";
+import { ShoppingBag, Sparkles, UserCircle, Upload, Loader2, History, Camera, ChevronDown, ChevronUp, ImageIcon } from "lucide-react";
 
 const USER_ID = "demo";
 
@@ -43,6 +43,7 @@ export default function Home() {
     }
   };
 
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
   const [saveError, setSaveError] = useState("");
 
   const handleSaveName = async () => {
@@ -183,12 +184,65 @@ export default function Home() {
               <History className="w-5 h-5" /> Recent Looks
             </h2>
             <div className="space-y-3">
-              {history.map(h => (
-                <div key={h._id} className="p-4 bg-pink-50/50 rounded-xl" data-testid={`card-history-${h._id}`}>
-                  <p className="font-bold text-pink-900 text-sm">{h.results?.[0]?.outfitText || "Past Look"}</p>
-                  <p className="text-xs text-pink-500 mt-1">{h.occasion} &middot; {h.weatherSummary}</p>
-                </div>
-              ))}
+              {history.map(h => {
+                const isExpanded = expandedHistory === h._id;
+                const outfits = h.results || [];
+                return (
+                  <div key={h._id} data-testid={`card-history-${h._id}`}>
+                    <button
+                      onClick={() => setExpandedHistory(isExpanded ? null : h._id)}
+                      className="w-full text-left p-4 bg-pink-50/50 rounded-xl flex items-center justify-between gap-3 transition-colors hover:bg-pink-50"
+                      data-testid={`button-expand-history-${h._id}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {outfits[0]?.tryOnImageBase64 ? (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-pink-100">
+                            <img src={`data:image/jpeg;base64,${outfits[0].tryOnImageBase64}`} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg flex-shrink-0 bg-pink-100 flex items-center justify-center">
+                            <ImageIcon className="w-5 h-5 text-pink-300" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-bold text-pink-900 text-sm truncate">{outfits[0]?.outfitText || "Past Look"}</p>
+                          <p className="text-xs text-pink-500 mt-0.5">{h.occasion} &middot; {h.weatherSummary}</p>
+                        </div>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-pink-400 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-pink-400 flex-shrink-0" />}
+                    </button>
+
+                    {isExpanded && outfits.length > 0 && (
+                      <div className="mt-2 space-y-4 px-2 pb-2">
+                        {outfits.map((outfit: any, i: number) => (
+                          <div key={i} className="bg-white rounded-xl border border-pink-100 overflow-hidden" data-testid={`card-history-outfit-${h._id}-${i}`}>
+                            <div className="flex flex-col sm:flex-row">
+                              {outfit.tryOnImageBase64 ? (
+                                <div className="sm:w-48 flex-shrink-0 bg-pink-50">
+                                  <img
+                                    src={`data:image/jpeg;base64,${outfit.tryOnImageBase64}`}
+                                    alt={outfit.outfitText}
+                                    className="w-full h-full object-cover aspect-[3/4]"
+                                    data-testid={`img-history-tryon-${h._id}-${i}`}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="sm:w-48 flex-shrink-0 bg-pink-50 flex items-center justify-center min-h-[160px]">
+                                  <ImageIcon className="w-10 h-10 text-pink-200" />
+                                </div>
+                              )}
+                              <div className="flex-1 p-4 space-y-2">
+                                <h3 className="font-bold text-pink-900" data-testid={`text-history-outfit-name-${h._id}-${i}`}>{outfit.outfitText}</h3>
+                                <p className="text-sm text-gray-500 italic">{outfit.reason}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
