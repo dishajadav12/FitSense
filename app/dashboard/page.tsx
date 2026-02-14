@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Upload, Plus, Sparkles, ShoppingBag, Loader2, Cloud, Wind, Thermometer, User, Coffee, Zap } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Upload, Plus, Sparkles, ShoppingBag, Loader2, Cloud, Wind, Thermometer, Zap, ChevronLeft } from "lucide-react";
 
 const CLOSET_TYPES = ["top", "bottom", "dress", "shoes", "outerwear"];
 const OCCASIONS = ["Work", "Date", "Casual", "Party"];
@@ -32,10 +33,16 @@ const WOMEN_DEMO_ITEMS = [
 ];
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
   const userId = "demo";
   const items = useQuery(api.closet.listClosetItems, { userId });
   const addItem = useMutation(api.closet.addClosetItem);
   const generateUploadUrl = useMutation(api.closet.generateUploadUrl);
+
+  // View state
+  const [view, setView] = useState<"default" | "add">(
+    searchParams.get("view") === "add" ? "add" : "default"
+  );
 
   // Closet State
   const [label, setLabel] = useState("");
@@ -114,6 +121,7 @@ export default function Dashboard() {
       setType("top");
       setUploadedStorageId(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      setView("default"); // Back to closet view after adding
     } catch (err) {
       console.error("Add item error:", err);
       setUploadError("Failed to add piece. Please try again.");
@@ -136,126 +144,47 @@ export default function Dashboard() {
             <ShoppingBag className="text-pink-600 w-8 h-8" />
             <h1 className="text-3xl font-bold text-pink-900">My Chic Closet</h1>
           </div>
-          <button
-            onClick={loadDemo}
-            className="flex items-center gap-2 px-4 py-2 bg-pink-200 hover:bg-pink-300 text-pink-900 rounded-full transition-colors font-medium"
-          >
-            <Sparkles className="w-4 h-4" />
-            Load Style Demo
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setView(view === "add" ? "default" : "add")}
+              className={`px-4 py-2 rounded-full transition-colors font-medium border-2 ${view === "add" ? 'bg-white border-pink-200 text-pink-600' : 'bg-pink-600 border-pink-600 text-white'}`}
+            >
+              {view === "add" ? "Back to Boutique" : "Add Piece"}
+            </button>
+            <button
+              onClick={loadDemo}
+              className="flex items-center gap-2 px-4 py-2 bg-pink-200 hover:bg-pink-300 text-pink-900 rounded-full transition-colors font-medium"
+            >
+              <Sparkles className="w-4 h-4" />
+              Demo
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Context & Closet Form */}
-          <div className="lg:col-span-1 space-y-8">
-            {/* Today's Context Section */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
-              <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
-                <Cloud className="w-5 h-5" /> Today's Context
+        {view === "add" ? (
+          <div className="max-w-md mx-auto">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border-pink-100 border-2">
+              <h2 className="text-2xl font-bold mb-6 text-pink-800 flex items-center gap-2">
+                <Plus className="w-6 h-6" /> Add New Piece
               </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-pink-700 mb-1">Occasion</label>
-                  <select
-                    value={occasion}
-                    onChange={(e) => setOccasion(e.target.value)}
-                    className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none bg-white"
-                  >
-                    {OCCASIONS.map((o) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-sm font-medium text-pink-700 italic">Mood</label>
-                    <span className="text-xs font-bold text-pink-600">{mood}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={mood}
-                    onChange={(e) => setMood(parseInt(e.target.value))}
-                    className="w-full h-2 bg-pink-100 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                  />
-                  <div className="flex justify-between mt-1 px-1">
-                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Comfy</span>
-                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Confident</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-pink-50/50 rounded-xl border border-pink-100">
-                  <div className="flex items-center gap-2">
-                    <Zap className={`w-4 h-4 ${isBloated ? 'text-pink-500' : 'text-gray-400'}`} />
-                    <span className="text-sm font-medium text-pink-700">Body State</span>
-                  </div>
-                  <button
-                    onClick={() => setIsBloated(!isBloated)}
-                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${isBloated ? 'bg-pink-500 text-white shadow-sm shadow-pink-200' : 'bg-white text-gray-400 border border-gray-200'}`}
-                  >
-                    {isBloated ? 'Bloated' : 'Normal'}
-                  </button>
-                </div>
-
-                <div className="pt-2 border-t border-pink-50">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="City..."
-                      className="flex-1 px-3 py-2 border-pink-200 border rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                    />
-                    <button
-                      onClick={fetchWeather}
-                      disabled={isWeatherLoading}
-                      className="px-3 py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-lg transition-colors"
-                    >
-                      {isWeatherLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {weather && (
-                    <div className="mt-2 flex items-center justify-center gap-4 py-2 bg-blue-50/50 rounded-lg text-blue-700 border border-blue-100">
-                      <div className="flex items-center gap-1">
-                        <Thermometer className="w-3 h-3 opacity-70" />
-                        <span className="text-xs font-bold">{weather.temp}°F</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Wind className="w-3 h-3 opacity-70" />
-                        <span className="text-xs font-bold uppercase tracking-widest">{weather.condition}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Add Closet Item Form */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
-              <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
-                <Plus className="w-5 h-5" /> Add New Piece
-              </h2>
-              <form onSubmit={handleAdd} className="space-y-4">
+              <form onSubmit={handleAdd} className="space-y-6">
                 <div 
                   onClick={() => !isUploading && !isSubmitting && fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors bg-pink-50/50 relative ${uploadError ? 'border-red-300 bg-red-50' : 'border-pink-200 hover:border-pink-400'} ${(isUploading || isSubmitting) ? 'cursor-not-allowed opacity-70' : ''}`}
+                  className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-colors bg-pink-50/50 relative ${uploadError ? 'border-red-300 bg-red-50' : 'border-pink-200 hover:border-pink-400'} ${(isUploading || isSubmitting) ? 'cursor-not-allowed opacity-70' : ''}`}
                 >
                   {isUploading ? (
                     <div className="flex flex-col items-center">
-                      <Loader2 className="w-8 h-8 text-pink-500 animate-spin mb-2" />
-                      <p className="text-xs text-pink-600 font-medium">Uploading to boutique...</p>
+                      <Loader2 className="w-10 h-10 text-pink-500 animate-spin mb-3" />
+                      <p className="text-sm text-pink-600 font-medium">Uploading to boutique...</p>
                     </div>
                   ) : (
                     <>
-                      <Upload className={`w-8 h-8 mx-auto mb-2 ${uploadError ? 'text-red-400' : 'text-pink-400'}`} />
-                      <p className={`text-xs font-medium ${uploadError ? 'text-red-600' : 'text-pink-600'}`}>
+                      <Upload className={`w-10 h-10 mx-auto mb-3 ${uploadError ? 'text-red-400' : 'text-pink-400'}`} />
+                      <p className={`text-sm font-medium ${uploadError ? 'text-red-600' : 'text-pink-600'}`}>
                         {uploadedStorageId ? "Image Selected" : (fileInputRef.current?.files?.[0]?.name || "Click to upload image")}
                       </p>
                       {uploadedStorageId && (
-                        <p className="text-[10px] text-green-600 mt-1 font-bold italic">Upload ready!</p>
+                        <p className="text-xs text-green-600 mt-2 font-bold italic">Upload ready!</p>
                       )}
                     </>
                   )}
@@ -268,91 +197,188 @@ export default function Dashboard() {
                     disabled={isUploading || isSubmitting}
                   />
                 </div>
-                {uploadError && <p className="text-xs text-red-600 font-medium px-1">{uploadError}</p>}
-                <input
-                  type="text"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  placeholder="Label (e.g. Favorite Silk Dress)"
-                  className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                />
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none bg-white"
-                >
-                  {CLOSET_TYPES.map((t) => (
-                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                  ))}
-                </select>
+                {uploadError && <p className="text-sm text-red-600 font-medium px-1">{uploadError}</p>}
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-pink-700 mb-1">Label</label>
+                    <input
+                      type="text"
+                      value={label}
+                      onChange={(e) => setLabel(e.target.value)}
+                      placeholder="e.g. Favorite Silk Dress"
+                      className="w-full px-4 py-3 border-pink-200 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-pink-700 mb-1">Type</label>
+                    <select
+                      value={type}
+                      onChange={(e) => setType(e.target.value)}
+                      className="w-full px-4 py-3 border-pink-200 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:outline-none bg-white"
+                    >
+                      {CLOSET_TYPES.map((t) => (
+                        <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   disabled={isSubmitting || isUploading || !uploadedStorageId}
-                  className="w-full py-3 bg-pink-600 hover:bg-pink-700 disabled:bg-pink-300 text-white rounded-xl font-bold shadow-md shadow-pink-100 transition-all transform active:scale-95"
+                  className="w-full py-4 bg-pink-600 hover:bg-pink-700 disabled:bg-pink-300 text-white rounded-2xl font-bold shadow-lg shadow-pink-100 transition-all transform active:scale-95"
                 >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Add to Chic Closet"}
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Add to Chic Closet"}
                 </button>
               </form>
             </div>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column: Context */}
+            <div className="lg:col-span-1 space-y-8">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
+                <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
+                  <Cloud className="w-5 h-5" /> Today's Context
+                </h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-pink-700 mb-1">Occasion</label>
+                    <select
+                      value={occasion}
+                      onChange={(e) => setOccasion(e.target.value)}
+                      className="w-full px-3 py-2 border-pink-200 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:outline-none bg-white"
+                    >
+                      {OCCASIONS.map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
+                  </div>
 
-          {/* Right Column: Closet Grid & Outfit Result Placeholder */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Outfit Result Placeholder */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
-              <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
-                <Sparkles className="w-5 h-5" /> AI Outfit Suggestion
-              </h2>
-              <div className="h-48 bg-pink-50/30 rounded-2xl border-2 border-dashed border-pink-100 flex flex-col items-center justify-center text-pink-300 p-8 text-center">
-                <p className="font-medium italic mb-2">"Based on your {occasion.toLowerCase()} occasion and {weather?.condition.toLowerCase() || 'cloudy'} weather..."</p>
-                <p className="text-xs opacity-60">Recommendation logic coming in the next step!</p>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-sm font-medium text-pink-700 italic">Mood</label>
+                      <span className="text-xs font-bold text-pink-600">{mood}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={mood}
+                      onChange={(e) => setMood(parseInt(e.target.value))}
+                      className="w-full h-2 bg-pink-100 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                    />
+                    <div className="flex justify-between mt-1 px-1">
+                      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Comfy</span>
+                      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Confident</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-pink-50/50 rounded-xl border border-pink-100">
+                    <div className="flex items-center gap-2">
+                      <Zap className={`w-4 h-4 ${isBloated ? 'text-pink-500' : 'text-gray-400'}`} />
+                      <span className="text-sm font-medium text-pink-700">Body State</span>
+                    </div>
+                    <button
+                      onClick={() => setIsBloated(!isBloated)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${isBloated ? 'bg-pink-500 text-white shadow-sm shadow-pink-200' : 'bg-white text-gray-400 border border-gray-200'}`}
+                    >
+                      {isBloated ? 'Bloated' : 'Normal'}
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-pink-50">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="City..."
+                        className="flex-1 px-3 py-2 border-pink-200 border rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={fetchWeather}
+                        disabled={isWeatherLoading}
+                        className="px-3 py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-lg transition-colors"
+                      >
+                        {isWeatherLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {weather && (
+                      <div className="mt-2 flex items-center justify-center gap-4 py-2 bg-blue-50/50 rounded-lg text-blue-700 border border-blue-100">
+                        <div className="flex items-center gap-1">
+                          <Thermometer className="w-3 h-3 opacity-70" />
+                          <span className="text-xs font-bold">{weather.temp}°F</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Wind className="w-3 h-3 opacity-70" />
+                          <span className="text-xs font-bold uppercase tracking-widest">{weather.condition}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Closet Grid */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4 text-pink-900">Your Boutique</h2>
-              {!items ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((n) => (
-                    <div key={n} className="aspect-[3/4] bg-pink-100 animate-pulse rounded-2xl"></div>
-                  ))}
+            {/* Right Column: Closet Grid & Outfit Result Placeholder */}
+            <div className="lg:col-span-2 space-y-8">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border-pink-100 border-2">
+                <h2 className="text-xl font-semibold mb-4 text-pink-800 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" /> AI Outfit Suggestion
+                </h2>
+                <div className="h-48 bg-pink-50/30 rounded-2xl border-2 border-dashed border-pink-100 flex flex-col items-center justify-center text-pink-300 p-8 text-center">
+                  <p className="font-medium italic mb-2">"Based on your {occasion.toLowerCase()} occasion and {weather?.condition.toLowerCase() || 'cloudy'} weather..."</p>
+                  <p className="text-xs opacity-60">Recommendation logic coming in the next step!</p>
                 </div>
-              ) : items.length === 0 ? (
-                <div className="bg-white p-16 rounded-2xl border-2 border-dashed border-pink-100 text-center">
-                  <p className="text-pink-400 font-medium">Your boutique is empty. Start adding your style!</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                  {items.map((item) => (
-                    <div key={item._id} className="bg-white rounded-2xl shadow-sm border-pink-50 border overflow-hidden group hover:shadow-md transition-shadow">
-                      <div className="aspect-[3/4] relative bg-pink-50 flex items-center justify-center">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.label || "Closet item"}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = "https://placehold.co/400x400?text=Invalid+Image";
-                          }}
-                        />
-                      </div>
-                      <div className="p-4 bg-white">
-                        <p className="font-bold text-pink-900 text-sm truncate">
-                          {item.label || "Untitled Style"}
-                        </p>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="px-3 py-1 bg-pink-50 text-pink-600 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                            {item.type}
-                          </span>
+              </div>
+
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-pink-900">Your Boutique</h2>
+                {!items ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((n) => (
+                      <div key={n} className="aspect-[3/4] bg-pink-100 animate-pulse rounded-2xl"></div>
+                    ))}
+                  </div>
+                ) : items.length === 0 ? (
+                  <div className="bg-white p-16 rounded-2xl border-2 border-dashed border-pink-100 text-center">
+                    <p className="text-pink-400 font-medium">Your boutique is empty. Start adding your style!</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                    {items.map((item) => (
+                      <div key={item._id} className="bg-white rounded-2xl shadow-sm border-pink-50 border overflow-hidden group hover:shadow-md transition-shadow">
+                        <div className="aspect-[3/4] relative bg-pink-50 flex items-center justify-center">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.label || "Closet item"}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://placehold.co/400x400?text=Invalid+Image";
+                            }}
+                          />
+                        </div>
+                        <div className="p-4 bg-white">
+                          <p className="font-bold text-pink-900 text-sm truncate">
+                            {item.label || "Untitled Style"}
+                          </p>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="px-3 py-1 bg-pink-50 text-pink-600 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                              {item.type}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
