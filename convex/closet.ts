@@ -41,6 +41,22 @@ export const addClosetItem = mutation({
   },
 });
 
+export const updateClosetItemImage = mutation({
+  args: { userId: v.string(), label: v.string(), newImageUrl: v.string() },
+  handler: async (ctx, args) => {
+    const items = await ctx.db
+      .query("closetItems")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+    const match = items.find((i) => i.label === args.label);
+    if (match) {
+      await ctx.db.patch(match._id, { imageUrl: args.newImageUrl });
+      return { updated: true, id: match._id };
+    }
+    return { updated: false };
+  },
+});
+
 export const deduplicateAndKeepLatest = mutation({
   args: { userId: v.string(), keepCount: v.number() },
   handler: async (ctx, args) => {
