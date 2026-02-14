@@ -41,6 +41,40 @@ export const addClosetItem = mutation({
   },
 });
 
+export const deduplicateAndKeepLatest = mutation({
+  args: { userId: v.string(), keepCount: v.number() },
+  handler: async (ctx, args) => {
+    const allItems = await ctx.db
+      .query("closetItems")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .collect();
+
+    const seen = new Set<string>();
+    const toKeep: typeof allItems = [];
+    const toDelete: typeof allItems = [];
+
+    for (const item of allItems) {
+      const key = `${item.imageUrl}||${item.label}||${item.type}`;
+      if (seen.has(key)) {
+        toDelete.push(item);
+      } else {
+        seen.add(key);
+        toKeep.push(item);
+      }
+    }
+
+    const extraToDelete = toKeep.slice(args.keepCount);
+    const allToDelete = [...toDelete, ...extraToDelete];
+
+    for (const item of allToDelete) {
+      await ctx.db.delete(item._id);
+    }
+
+    return { deleted: allToDelete.length, remaining: Math.min(toKeep.length, args.keepCount) };
+  },
+});
+
 export const generateUploadUrl = mutation(async (ctx) => {
   return await ctx.storage.generateUploadUrl();
 });
