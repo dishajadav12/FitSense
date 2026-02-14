@@ -69,19 +69,51 @@ export default function Dashboard() {
     fetchWeather();
   }, []);
 
+  const [analysisStatus, setAnalysisStatus] = useState("");
+
   const handleRecommend = async () => {
     setIsGenerating(true);
+    setAnalysisStatus("");
     try {
+      let itemDescriptions: Record<string, string> = {};
+
+      if (items && items.length > 0) {
+        setAnalysisStatus("Scanning your wardrobe with AI vision...");
+        try {
+          const analyzePayload = items.map((item) => ({
+            id: item._id,
+            imageUrl: item.imageUrl ?? "",
+            type: item.type ?? "unknown",
+            label: item.label ?? "item",
+          }));
+          const analyzeRes = await fetch("/api/analyze-closet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items: analyzePayload }),
+          });
+          if (analyzeRes.ok) {
+            const analyzeData = await analyzeRes.json();
+            itemDescriptions = analyzeData.descriptions || {};
+          }
+        } catch (err) {
+          console.error("Gemini analysis failed, continuing without:", err);
+        }
+      }
+
+      setAnalysisStatus("Creating outfits with your items...");
       const data = await generateOutfits({
         userId,
         occasion,
         mood,
         bodyState: isBloated ? "bloated" : "normal",
         weatherSummary: weather ? `${weather.temp}°F, ${weather.condition}` : "Unknown weather",
+        itemDescriptions,
       });
       setResults(data);
+      setAnalysisStatus("");
     } finally {
       setIsGenerating(false);
+      setAnalysisStatus("");
     }
   };
 
@@ -194,9 +226,14 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
-                <button onClick={handleRecommend} disabled={isGenerating} className="w-full py-4 bg-pink-600 text-white rounded-2xl font-bold shadow-lg flex justify-center items-center gap-2 hover:bg-pink-700 disabled:bg-pink-300 transition-all active:scale-95" data-testid="button-generate">
-                  {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  Generate Outfits
+                <button onClick={handleRecommend} disabled={isGenerating} className="w-full py-4 bg-pink-600 text-white rounded-2xl font-bold shadow-lg flex flex-col justify-center items-center gap-1 hover:bg-pink-700 disabled:bg-pink-300 transition-all active:scale-95" data-testid="button-generate">
+                  <span className="flex items-center gap-2">
+                    {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    Generate Outfits
+                  </span>
+                  {isGenerating && analysisStatus && (
+                    <span className="text-xs font-normal opacity-80">{analysisStatus}</span>
+                  )}
                 </button>
               </div>
             </div>

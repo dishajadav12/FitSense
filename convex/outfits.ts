@@ -42,6 +42,7 @@ export const generateTop3OutfitsWithTryOn = action({
     mood: v.number(),
     bodyState: v.string(),
     weatherSummary: v.string(),
+    itemDescriptions: v.optional(v.any()),
   },
   handler: async (ctx, args): Promise<any[]> => {
     const closetItems = await ctx.runQuery(api.closet.listClosetItems, {
@@ -55,19 +56,29 @@ export const generateTop3OutfitsWithTryOn = action({
       throw new Error("Your closet is empty. Add some items first!");
     }
 
+    const descriptions: Record<string, string> = args.itemDescriptions || {};
+
     const itemCatalog = closetItems.map((item: any, idx: number) => ({
       id: item._id,
       index: idx,
       type: item.type || "unknown",
       label: item.label || "unlabeled item",
       imageUrl: item.imageUrl,
+      visualDescription: descriptions[item._id] || null,
     }));
 
     const catalogText = itemCatalog
-      .map((item: any) => `ID:"${item.id}" | Type:${item.type} | Label:"${item.label}" | Image:${item.imageUrl}`)
-      .join("\n");
+      .map((item: any) => {
+        const desc = item.visualDescription
+          ? `\n   Visual Analysis: ${item.visualDescription}`
+          : "";
+        return `ID:"${item.id}" | Type:${item.type} | Label:"${item.label}"${desc}`;
+      })
+      .join("\n\n");
 
-    const textPrompt = `You are a professional women's fashion stylist. You have access to the user's ENTIRE wardrobe below. Your job is to create 3 complete, wearable outfits using ONLY items from this wardrobe.
+    const hasDescriptions = Object.keys(descriptions).length > 0;
+
+    const textPrompt = `You are a professional women's fashion stylist. You have access to the user's ENTIRE wardrobe below.${hasDescriptions ? " Each item includes a detailed visual analysis from AI image recognition — use these descriptions to make informed color, pattern, and style matching decisions." : ""} Your job is to create 3 complete, wearable outfits using ONLY items from this wardrobe.
 
 WARDROBE INVENTORY:
 ${catalogText}
@@ -83,16 +94,17 @@ RULES:
 2. Each outfit should include a logical combination (e.g. top+bottom+shoes, or dress+shoes+outerwear)
 3. Do NOT reuse the same item across multiple outfits unless necessary
 4. Consider the occasion, weather, mood, and body state when selecting items
-5. Provide a short outfit name, the reason it works, and a detailed visual description of the complete look
+5.${hasDescriptions ? " Use the visual analysis descriptions to ensure colors complement each other, patterns don't clash, and the overall aesthetic is cohesive." : ""} Provide a short outfit name, the reason it works, and a detailed visual description of the complete look
+6. In the imagePrompt, describe EXACTLY what the selected garments look like based on their visual analysis — accurate colors, fabrics, and details
 
 Output STRICT JSON only:
 {
   "results": [
     {
       "outfitText": "Short creative outfit name",
-      "reason": "Why this combination works for the context",
+      "reason": "Why this combination works for the context — reference specific colors, patterns, or fabric pairings",
       "selectedItemIds": ["id1", "id2", "id3"],
-      "imagePrompt": "Detailed description of a woman wearing: [describe each selected garment precisely — its color, fabric, fit, style]. Full-body, front-facing, fashion editorial pose"
+      "imagePrompt": "Detailed description of a woman wearing: [describe each selected garment precisely using the visual analysis — its exact color, fabric texture, fit, style details]. Full-body, front-facing, fashion editorial pose"
     }
   ]
 }`;

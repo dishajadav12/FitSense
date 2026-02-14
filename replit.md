@@ -61,5 +61,12 @@ Preferred communication style: Simple, everyday language.
 ### Environment Variables Required
 - `NEXT_PUBLIC_CONVEX_URL` — Convex deployment URL (required for the app to connect to Convex)
 
+### AI Pipeline — Gemini + MiniMax
+- **Gemini Vision** (via Replit AI Integrations) — Analyzes closet item photos to generate rich text descriptions (color, fabric, pattern, fit, style). Used in `app/api/analyze-closet/route.ts`. Uses `gemini-2.5-flash` model with inline image data.
+- **MiniMax M2** — Text-only LLM that receives Gemini's visual descriptions + user context to create 3 outfit combinations, selecting specific closet items by ID. Used in `convex/outfits.ts`.
+- **MiniMax image-01** — Generates try-on images using the outfit descriptions + user profile photo as character reference. Used in `convex/outfits.ts`.
+- **Flow:** Dashboard → Gemini analyzes all closet images → enriched descriptions sent to Convex action → MiniMax M2 creates outfits → MiniMax image-01 generates try-on images
+- **Environment variables:** `AI_INTEGRATIONS_GEMINI_BASE_URL`, `AI_INTEGRATIONS_GEMINI_API_KEY` (auto-managed by Replit), `MINIMAX_API_KEY` (secret)
+
 ### Not Yet Integrated But Referenced
 - The `package-lock.json` references many packages (drizzle-orm, express, passport, openai, stripe, etc.) from a prior or parallel architecture. The current Next.js + Convex setup does not use these. Focus on the `package.json` dependencies as the source of truth.
