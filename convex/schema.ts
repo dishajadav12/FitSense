@@ -24,6 +24,7 @@ export default defineSchema({
     weatherSummary: v.string(),
     outfitText: v.string(),
     reason: v.string(),
+    itemIds: v.optional(v.array(v.string())),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
 });
