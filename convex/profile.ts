@@ -1,11 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-/**
- * Upserts a profile photo for a user.
- * @param userId - The ID of the user.
- * @param photoUrl - The URL of the profile photo.
- */
 export const upsertProfilePhoto = mutation({
   args: { userId: v.string(), photoUrl: v.string() },
   handler: async (ctx, args) => {
@@ -29,11 +24,6 @@ export const upsertProfilePhoto = mutation({
   },
 });
 
-/**
- * Retrieves the profile photo URL for a user.
- * @param userId - The ID of the user.
- * @returns The profile photo URL or null if not found.
- */
 export const getProfilePhoto = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
@@ -42,5 +32,12 @@ export const getProfilePhoto = query({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
     return profile?.photoUrl || null;
+  },
+});
+
+export const getUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
   },
 });
