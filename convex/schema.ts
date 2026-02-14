@@ -20,11 +20,16 @@ export default defineSchema({
     mood: v.number(),
     bodyState: v.string(),
     weatherSummary: v.string(),
-    results: v.array(v.object({
+    // Keep old fields as optional to support legacy data during transition
+    outfitText: v.optional(v.string()),
+    reason: v.optional(v.string()),
+    itemIds: v.optional(v.array(v.string())),
+    // New structured results
+    results: v.optional(v.array(v.object({
       outfitText: v.string(),
       reason: v.string(),
       tryOnImageBase64: v.optional(v.string()),
-    })),
+    }))),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
 });
