@@ -62,7 +62,7 @@ export const generateTop3OutfitsWithTryOn = action({
 
     let results: any[] = [];
     try {
-      const textResponse = await fetch("https://api.minimaxi.com/v1/chat/completions", {
+      const textResponse = await fetch("https://api.minimax.io/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
