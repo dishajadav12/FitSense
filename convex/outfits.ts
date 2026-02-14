@@ -74,31 +74,24 @@ export const generateTop3OutfitsWithTryOn = action({
           response_format: { type: "json_object" },
         }),
       });
+      
+      if (!textResponse.ok) {
+        const errorText = await textResponse.text();
+        throw new Error(`MiniMax Text API Error: ${textResponse.status} - ${errorText}`);
+      }
+
       const textData: any = await textResponse.json();
       
       if (textData.choices && textData.choices[0] && textData.choices[0].message) {
         const content = textData.choices[0].message.content;
-        try {
-          const parsed = JSON.parse(content);
-          results = parsed.results || parsed.outfits || [];
-        } catch (e) {
-           // Basic extraction if JSON parsing fails
-           const match = content.match(/\{[\s\S]*\}/);
-           if (match) {
-             results = JSON.parse(match[0]).results || [];
-           }
-        }
+        const parsed = JSON.parse(content);
+        results = parsed.results || parsed.outfits || [];
+      } else {
+        throw new Error(`Invalid MiniMax response structure: ${JSON.stringify(textData)}`);
       }
     } catch (e) {
-      console.error("Text generation failed", e);
-    }
-
-    if (!results || results.length === 0) {
-      results = [
-        { outfitText: "Casual Chic", reason: "Comfortable and stylish for everyday.", imagePrompt: "wearing casual stylish clothes" },
-        { outfitText: "Evening Elegance", reason: "Sophisticated look for the night.", imagePrompt: "wearing elegant evening attire" },
-        { outfitText: "Active Ease", reason: "Perfect for a busy day on the go.", imagePrompt: "wearing active wear" }
-      ];
+      console.error("Text generation error details:", e);
+      throw e; // Stop execution if text generation fails
     }
 
     const finalResults = [];
@@ -120,10 +113,20 @@ export const generateTop3OutfitsWithTryOn = action({
               response_format: "base64",
             }),
           });
+
+          if (!imgResponse.ok) {
+            const errorText = await imgResponse.text();
+            throw new Error(`MiniMax Image API Error: ${imgResponse.status} - ${errorText}`);
+          }
+
           const imgData: any = await imgResponse.json();
           base64 = imgData.base64 || undefined;
+          
+          if (!base64) {
+            console.warn("MiniMax image generated but no base64 data returned", imgData);
+          }
         } catch (e) {
-          console.error("Image generation failed", e);
+          console.error("Image generation error details:", e);
         }
       }
       finalResults.push({
